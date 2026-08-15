@@ -22,6 +22,9 @@ export const metadata = {
     shortcut: "/helix-logo.svg",
     apple: "/helix-logo.svg",
   },
+  verification: {
+    google: "gEv3j3rsGDcSrdrVga-miMdr1ShWliGxOKsq7f81SP4",
+  },
 };
 
 export default function RootLayout({ children }) {
