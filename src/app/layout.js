@@ -1,0 +1,57 @@
+import { ClerkProvider } from "@clerk/nextjs";
+import { Geist, Geist_Mono } from "next/font/google";
+import { shadesOfPurple } from "@clerk/themes";
+import { MapConfigProvider } from "@/context/MapConfigContext";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata = {
+  title: "Helix Maps",
+  description: "Frictionless, infinite workspace to visually architect ideas, systems, and workflows.",
+  icons: {
+    icon: "/helix-logo.svg",
+    shortcut: "/helix-logo.svg",
+    apple: "/helix-logo.svg",
+  },
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+        <ClerkProvider appearance={{
+          baseTheme: shadesOfPurple,
+          variables: {
+            colorPrimary: "#ffffff",
+            colorBackground: "#09090b",
+            colorText: "#f4f4f5",
+            colorForeground: "#f4f4f5",
+            colorNeutral: "#f4f4f5",
+            colorTextSecondary: "#a1a1aa",
+            colorInputBackground: "#18181b",
+            colorInputText: "#f4f4f5",
+            colorInputForeground: "#f4f4f5",
+            colorBorder: "#27272a",
+            colorTextOnPrimaryBackground: "#09090b",
+          }
+        }}>
+          <MapConfigProvider>
+            {children}
+          </MapConfigProvider>
+        </ClerkProvider>
+      </body>
+    </html>
+  );
+}
