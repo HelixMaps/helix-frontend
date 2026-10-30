@@ -57,9 +57,14 @@ export default function ContextMenu({ id, x, y, node, onClickOutside, onDelete, 
   return (
     <div
       ref={ref}
-      style={{ top: y, left: x }}
+      style={{
+        top: y,
+        left: x,
+        boxShadow:
+          "0 4px 0 0 #18181b, 0 24px 48px -4px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+      }}
       onContextMenu={handleContextMenu}
-      className="fixed z-[9999] min-w-[180px] bg-zinc-900/90 backdrop-blur-md border border-zinc-800/80 rounded-xl shadow-2xl shadow-black/80 py-1.5 animate-in fade-in zoom-in-95 duration-100 select-none cursor-default"
+      className="fixed z-[9999] min-w-[180px] bg-zinc-950/95 backdrop-blur-xl border border-zinc-700/80 rounded-2xl py-2 animate-in fade-in zoom-in-95 duration-100 select-none cursor-default"
     >
       {/* Node Info Header */}
       <div className="px-3 py-2 flex flex-col gap-0.5 border-b border-zinc-800/50 mb-1">

@@ -67,7 +67,7 @@ export default function DetailsDrawer({ node, onClose, onUpdateData }) {
   return (
     <div
       ref={drawerRef}
-      className="fixed top-0 right-0 h-full w-[380px] bg-zinc-950/95 border-l border-zinc-800/80 backdrop-blur-md shadow-2xl z-40 flex flex-col transition-all duration-300 ease-in-out animate-in slide-in-from-right duration-300"
+      className="fixed top-0 right-0 h-full w-[380px] bg-zinc-950/95 border-l border-zinc-700/80 backdrop-blur-2xl shadow-[-24px_0_60px_rgba(0,0,0,0.95)] z-40 flex flex-col transition-all duration-300 ease-in-out animate-in slide-in-from-right duration-300"
     >
       {/* Drawer Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800/40 select-none">

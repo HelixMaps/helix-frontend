@@ -77,7 +77,7 @@ function SearchModal({ nodes, onSearch, onClose }) {
       {/* Modal Card */}
       <div
         ref={containerRef}
-        className="w-full max-w-md bg-zinc-900/95 border border-zinc-800/80 rounded-2xl shadow-2xl shadow-black/60 backdrop-blur-md overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-md bg-zinc-950/95 border border-zinc-700/80 rounded-2xl shadow-[0_4px_0_0_#18181b,0_32px_64px_-8px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.2)] backdrop-blur-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Search Input */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-zinc-800/50">
@@ -208,7 +208,7 @@ export default function NodeSearchBar({ nodes, onSearch, onClear, activeSearch }
         {/* Search trigger button */}
         <button
           onClick={() => setIsOpen(true)}
-          className="p-2.5 bg-zinc-950/90 hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-full text-zinc-400 hover:text-zinc-200 shadow-xl cursor-pointer active:scale-95 transition-all duration-200"
+          className="p-2.5 bg-zinc-950/90 hover:bg-zinc-900 border border-zinc-700/80 hover:border-zinc-600 rounded-full text-zinc-300 hover:text-zinc-100 shadow-[0_3px_0_0_#18181b,0_10px_20px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.2)] cursor-pointer active:translate-y-0.5 active:shadow-[0_1px_0_#18181b,0_4px_10px_rgba(0,0,0,0.8)] transition-all duration-150"
           title="Search nodes (⌘K)"
         >
           <Search size={15} />

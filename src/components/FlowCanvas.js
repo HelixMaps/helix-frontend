@@ -18,6 +18,8 @@ import "@xyflow/react/dist/style.css";
 import IdeaNode from "./nodes/IdeaNode";
 import TaskNode from "./nodes/TaskNode";
 import ResourceNode from "./nodes/ResourceNode";
+import ThreeDimensionalEdge from "./edges/ThreeDimensionalEdge";
+import Canvas3DControls from "./Canvas3DControls";
 import NodePicker from "./NodePicker";
 import ContextMenu from "./ContextMenu";
 import DetailsDrawer from "./DetailsDrawer";
@@ -26,79 +28,82 @@ import { useMapConfig } from "@/context/MapConfigContext";
 import { Map, Minimize2 } from "lucide-react";
 import { fetchMap, saveMapGraph } from "@/service/mapService";
 
-
-// Initial nodes and edges demonstrating the new custom types
-const initialNodes = [
-  {
-    id: "root-1",
-    type: "idea",
-    data: { label: "Central Idea" },
-    position: { x: 250, y: 150 },
-  },
-  {
-    id: "child-1",
-    type: "task",
-    data: { label: "Define Requirements" },
-    position: { x: 100, y: 300 },
-  },
-  {
-    id: "child-2",
-    type: "resource",
-    data: { label: "React Flow Docs" },
-    position: { x: 400, y: 300 },
-  },
-];
-
-const initialEdges = [
-  {
-    id: "edge-1",
-    source: "root-1",
-    target: "child-1",
-    animated: true,
-    style: { stroke: "#3b82f6", strokeWidth: 2 },
-  },
-  {
-    id: "edge-2",
-    source: "root-1",
-    target: "child-2",
-    animated: true,
-    style: { stroke: "#3b82f6", strokeWidth: 2 },
-  },
-];
-
-// Registering our custom nodes
+// Registering our custom 3D nodes
 const nodeTypes = {
   idea: IdeaNode,
   task: TaskNode,
   resource: ResourceNode,
 };
 
-const edgeTypes = {};
+// Registering our custom 3D edge types
+const edgeTypes = {
+  threeDimensional: ThreeDimensionalEdge,
+  default: ThreeDimensionalEdge,
+  bezier: ThreeDimensionalEdge,
+  straight: ThreeDimensionalEdge,
+  step: ThreeDimensionalEdge,
+  smoothstep: ThreeDimensionalEdge,
+};
 
 function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSessions }) {
-  const { edgeStyle, changeNodeShape, changeEdgeStyle } = useMapConfig();
+  const {
+    edgeStyle,
+    changeNodeShape,
+    changeEdgeStyle,
+    viewMode,
+    canvasPitch,
+    canvasYaw,
+    enableParallax,
+  } = useMapConfig();
+
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [menu, setMenu] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [activeSearch, setActiveSearch] = useState(null);   // { label, id }
+  const [activeSearch, setActiveSearch] = useState(null);
   const [highlightedNodeId, setHighlightedNodeId] = useState(null);
   const [isMiniMapOpen, setIsMiniMapOpen] = useState(true);
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
+
+  // Dynamic subtle mouse parallax on the 3D canvas stage
+  const [mouseParallax, setMouseParallax] = useState({ pitch: 0, yaw: 0 });
+  const canvasContainerRef = useRef(null);
+
+  const handleCanvasMouseMove = useCallback(
+    (e) => {
+      if (!enableParallax || viewMode === "3d-topdown") {
+        if (mouseParallax.pitch !== 0 || mouseParallax.yaw !== 0) {
+          setMouseParallax({ pitch: 0, yaw: 0 });
+        }
+        return;
+      }
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const normX = (e.clientX - width / 2) / (width / 2);
+      const normY = (e.clientY - height / 2) / (height / 2);
+
+      // Gentle interactive tilt reaction (±2.5°)
+      setMouseParallax({
+        pitch: -normY * 2.5,
+        yaw: normX * 3,
+      });
+    },
+    [enableParallax, viewMode, mouseParallax]
+  );
 
   const sessionsRef = useRef(sessions);
   useEffect(() => {
     sessionsRef.current = sessions;
   }, [sessions]);
 
-  // Ref to store the latest values for flushing on session switch / unmount
+  // Ref to store latest values for flushing on session switch / unmount
   const latestStateRef = useRef({ nodes, edges, activeSessionId });
   useEffect(() => {
     latestStateRef.current = { nodes, edges, activeSessionId };
   }, [nodes, edges, activeSessionId]);
 
-  // Flush map graph to database immediately when session changes or component unmounts
+  // Flush map graph to database immediately when session changes or unmounts
   useEffect(() => {
     return () => {
       const { nodes: ns, edges: es, activeSessionId: prevSessionId } = latestStateRef.current;
@@ -128,7 +133,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     };
   }, [activeSessionId, getToken, isGuest, setSessions]);
 
-  // 1. Load active map details (nodes, edges, styles) on session change
+  // 1. Load active map details on session change
   useEffect(() => {
     if (!activeSessionId) return;
 
@@ -142,7 +147,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           if (mapData && active) {
             setNodes(mapData.nodes || []);
             setEdges(mapData.edges || []);
-            
+
             if (mapData.styleConfig) {
               if (mapData.styleConfig.nodeShape) {
                 changeNodeShape(mapData.styleConfig.nodeShape);
@@ -162,7 +167,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         if (active) {
           setNodes(mapData.nodes || []);
           setEdges(mapData.edges || []);
-          
+
           if (mapData.styleConfig) {
             if (mapData.styleConfig.nodeShape) {
               changeNodeShape(mapData.styleConfig.nodeShape);
@@ -201,7 +206,6 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
               : s
           )
         );
-        console.log("Local map layout saved");
       }, 1500);
       return () => clearTimeout(saveTimeout);
     }
@@ -211,49 +215,51 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         const token = await getToken();
         if (!token) return;
         await saveMapGraph(token, activeSessionId, nodes, edges);
-        console.log("Map layout auto-saved successfully");
       } catch (err) {
         console.error("Error auto-saving map layout:", err);
       }
-    }, 1500); // Save 1.5s after user stops editing/moving
+    }, 1500);
 
     return () => clearTimeout(saveTimeout);
   }, [nodes, edges, activeSessionId, getToken, isLoadingCanvas, isGuest, setSessions]);
 
-
   // Navigate to a node found by search
-  const handleSearchNode = useCallback((node) => {
-    setHighlightedNodeId(node.id);
-    setActiveSearch(node.data?.label || "Node");
-    // Brief delay so state propagates before fitView measures node
-    setTimeout(() => {
-      fitView({ nodes: [{ id: node.id }], padding: 0.6, duration: 600, maxZoom: 1.2 });
-    }, 50);
-  }, [fitView]);
+  const handleSearchNode = useCallback(
+    (node) => {
+      setHighlightedNodeId(node.id);
+      setActiveSearch(node.data?.label || "Node");
+      setTimeout(() => {
+        fitView({ nodes: [{ id: node.id }], padding: 0.6, duration: 600, maxZoom: 1.2 });
+      }, 50);
+    },
+    [fitView]
+  );
 
-  // Clear search highlight
   const handleClearSearch = useCallback(() => {
     setActiveSearch(null);
     setHighlightedNodeId(null);
   }, []);
 
-  const handleStartEditNode = useCallback((nodeId) => {
-    setNodes((nds) =>
-      nds.map((n) => {
-        if (n.id === nodeId) {
-          return {
-            ...n,
-            data: {
-              ...n.data,
-              isEditing: true
-            }
-          };
-        }
-        return n;
-      })
-    );
-    setMenu(null);
-  }, [setNodes]);
+  const handleStartEditNode = useCallback(
+    (nodeId) => {
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id === nodeId) {
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                isEditing: true,
+              },
+            };
+          }
+          return n;
+        })
+      );
+      setMenu(null);
+    },
+    [setNodes]
+  );
 
   const handleDeleteNode = useCallback(
     (nodeId) => {
@@ -329,11 +335,21 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   }, []);
 
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: "#3b82f6", strokeWidth: 2 } }, eds)),
+    (params) =>
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...params,
+            type: "threeDimensional",
+            animated: true,
+            style: { stroke: "#3b82f6", strokeWidth: 2.5 },
+          },
+          eds
+        )
+      ),
     [setEdges]
   );
 
-  // Drag and Drop handlers
   const onDragOver = useCallback((event) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
@@ -342,14 +358,9 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   const onDrop = useCallback(
     (event) => {
       event.preventDefault();
-
       const type = event.dataTransfer.getData("application/reactflow");
+      if (!type) return;
 
-      if (!type) {
-        return;
-      }
-
-      // Convert screen client coordinates to flow coordinates
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
@@ -367,13 +378,11 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     [screenToFlowPosition, setNodes]
   );
 
-  // Click-to-add handler (adds node at the center of the current viewport)
   const addNodeAtCenter = useCallback(
     (type) => {
       const width = window.innerWidth;
       const height = window.innerHeight;
 
-      // Project the center of the viewport to flow coordinates
       const position = screenToFlowPosition({
         x: width / 2,
         y: height / 2,
@@ -393,59 +402,85 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
 
   const fitViewOptions = {
     padding: 0.35,
-    maxZoom: 0.75,
+    maxZoom: 0.85,
   };
 
-  // Inject a transient highlight ring into node styles
+  // Node highlighting for search matches
   const displayNodes = nodes.map((n) => {
     if (n.id !== highlightedNodeId) return n;
-    const rings = {
-      idea:     "0 0 0 3px #3b82f6, 0 0 24px 4px rgba(59,130,246,0.4)",
-      task:     "0 0 0 3px #10b981, 0 0 24px 4px rgba(16,185,129,0.4)",
-      resource: "0 0 0 3px #f59e0b, 0 0 24px 4px rgba(245,158,11,0.4)",
-    };
     return {
       ...n,
-      style: {
-        ...n.style,
-        boxShadow: rings[n.type] || rings.idea,
-        borderRadius: "12px",
-        transition: "box-shadow 0.3s ease",
-      },
+      selected: true,
     };
   });
 
+  // Always route edges through 3D edge renderer
   const displayEdges = edges.map((e) => ({
     ...e,
-    type: edgeStyle === "bezier" ? "default" : edgeStyle,
+    type: "threeDimensional",
   }));
+
+  // Calculate 3D perspective pitch and yaw
+  const isPerspective = viewMode === "3d-perspective";
+  const isIsometric = viewMode === "3d-isometric";
+  const isTopDown = viewMode === "3d-topdown";
+
+  const effectivePitch = isTopDown ? 0 : Math.max(0, canvasPitch + mouseParallax.pitch);
+  const effectiveYaw = isTopDown ? 0 : canvasYaw + mouseParallax.yaw;
 
   if (isLoadingCanvas) {
     return (
-      <div className="relative w-full h-full bg-zinc-950 flex items-center justify-center text-zinc-500 select-none overflow-hidden">
-        <div className="flex flex-col items-center gap-2.5">
-          <div className="w-5 h-5 rounded-full border-2 border-zinc-800 border-t-zinc-400 animate-spin" />
-          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Loading Canvas...</span>
+      <div className="relative w-full h-full bg-[#05070f] flex items-center justify-center text-zinc-500 select-none overflow-hidden font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 rounded-full border-2 border-zinc-800 border-t-blue-500 animate-spin shadow-[0_0_12px_rgba(59,130,246,0.5)]" />
+          <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider font-mono">
+            Initializing 3D Workspace...
+          </span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full bg-zinc-950 text-zinc-100 select-none overflow-hidden">
-      {/* Minimalist Watermark */}
-      <div className="absolute top-5 left-16 z-10 pointer-events-none select-none">
-        <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.25em] font-mono">
-          Helix Workspace // v0.1
+    <div
+      ref={canvasContainerRef}
+      onMouseMove={handleCanvasMouseMove}
+      className="relative w-full h-full bg-[#05070f] text-zinc-100 select-none overflow-hidden font-sans"
+      style={{
+        perspective: isPerspective ? "1300px" : isIsometric ? "2200px" : "none",
+        perspectiveOrigin: "50% 38%",
+      }}
+    >
+      {/* ── Volumetric Atmospheric Top Spotlight ── */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0 opacity-80"
+        style={{
+          background:
+            "radial-gradient(ellipse 75% 55% at 50% 12%, rgba(59, 130, 246, 0.12) 0%, rgba(15, 23, 42, 0.35) 45%, transparent 80%)",
+        }}
+      />
+
+      {/* ── Horizon Vanishing Fog (Top Edge) in 3D Mode ── */}
+      {!isTopDown && (
+        <div className="pointer-events-none absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-[#030712] via-[#05070f]/90 to-transparent z-10" />
+      )}
+
+      {/* ── Minimalist 3D Watermark ── */}
+      <div className="absolute top-5 left-16 z-20 pointer-events-none select-none flex items-center gap-2">
+        <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.22em] font-mono">
+          Helix Workspace // Spatial Matrix
+        </span>
+        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_8px_rgba(59,130,246,0.3)]">
+          3D VIEW
         </span>
       </div>
 
-      {/* Floating Node Picker */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-20">
+      {/* ── Floating 3D Node Picker ── */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-30">
         <NodePicker onAddNode={addNodeAtCenter} />
       </div>
 
-      {/* Node Search Bar + active badge */}
+      {/* ── Node Search Bar + Active Badge ── */}
       <NodeSearchBar
         nodes={nodes}
         onSearch={handleSearchNode}
@@ -453,72 +488,90 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         activeSearch={activeSearch}
       />
 
-      {/* Main Flow Canvas */}
-      <ReactFlow
-        nodes={displayNodes}
-        edges={displayEdges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        fitView
-        fitViewOptions={fitViewOptions}
-        colorMode="dark"
-        className="w-full h-full"
-        onNodeContextMenu={onNodeContextMenu}
-        onPaneClick={onPaneClick}
-        onMoveStart={onMoveStart}
-        onNodeDoubleClick={onNodeDoubleClick}
+      {/* ── 3D Viewport Controls HUD ── */}
+      <Canvas3DControls />
+
+      {/* ── 3D Transformed Canvas Stage ── */}
+      <div
+        className="w-full h-full origin-center transition-transform duration-500 ease-out"
+        style={{
+          transformStyle: "preserve-3d",
+          transform: isTopDown
+            ? "none"
+            : `rotateX(${effectivePitch}deg) rotateZ(${effectiveYaw}deg) scale(0.96)`,
+        }}
       >
-        <Background variant="dots" gap={24} size={1.5} color="#27272a" />
-        <Controls 
-          className="!bg-zinc-900/95 !border-zinc-800 !text-zinc-200 !shadow-lg [&>button]:!border-zinc-800 [&>button]:!bg-transparent hover:[&>button]:!bg-zinc-800 [&_path]:fill-zinc-200" 
-          showInteractive={false}
-        />
-        {isMiniMapOpen ? (
-          <>
-            <MiniMap 
-              width={160}
-              height={110}
-              className="!bg-zinc-900/95 !border-zinc-800 !rounded-lg !shadow-lg"
-              maskColor="rgba(9, 9, 11, 0.7)"
-              nodeColor={(node) => {
-                if (node.type === "idea") return "#1e3a8a";
-                if (node.type === "task") return "#065f46";
-                if (node.type === "resource") return "#78350f";
-                return "#18181b";
-              }}
-              nodeStrokeWidth={1}
-              nodeStrokeColor={(node) => {
-                if (node.type === "idea") return "#3b82f6";
-                if (node.type === "task") return "#10b981";
-                if (node.type === "resource") return "#f59e0b";
-                return "#27272a";
-              }}
-            />
+        <ReactFlow
+          nodes={displayNodes}
+          edges={displayEdges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          fitView
+          fitViewOptions={fitViewOptions}
+          colorMode="dark"
+          className="w-full h-full"
+          onNodeContextMenu={onNodeContextMenu}
+          onPaneClick={onPaneClick}
+          onMoveStart={onMoveStart}
+          onNodeDoubleClick={onNodeDoubleClick}
+        >
+          {/* Spatial 3D dot grid background */}
+          <Background variant="dots" gap={26} size={1.6} color="#27272a" />
+
+          {/* Controls */}
+          <Controls
+            className="!bg-zinc-900/90 !backdrop-blur-md !border-zinc-800/90 !text-zinc-200 !shadow-[0_12px_28px_rgba(0,0,0,0.8)] !rounded-xl [&>button]:!border-zinc-800/80 [&>button]:!bg-transparent hover:[&>button]:!bg-zinc-800 [&_path]:fill-zinc-200"
+            showInteractive={false}
+          />
+
+          {/* 3D Holographic MiniMap */}
+          {isMiniMapOpen ? (
+            <>
+              <MiniMap
+                width={170}
+                height={115}
+                className="!bg-zinc-950/90 !backdrop-blur-md !border-zinc-800/90 !rounded-xl !shadow-[0_16px_32px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.15)]"
+                maskColor="rgba(5, 7, 15, 0.75)"
+                nodeColor={(node) => {
+                  if (node.type === "idea") return "#1e3a8a";
+                  if (node.type === "task") return "#065f46";
+                  if (node.type === "resource") return "#78350f";
+                  return "#18181b";
+                }}
+                nodeStrokeWidth={1.5}
+                nodeStrokeColor={(node) => {
+                  if (node.type === "idea") return "#60a5fa";
+                  if (node.type === "task") return "#34d399";
+                  if (node.type === "resource") return "#fbbf24";
+                  return "#3f3f46";
+                }}
+              />
+              <button
+                onClick={() => setIsMiniMapOpen(false)}
+                className="absolute bottom-[140px] right-4 z-10 p-1.5 bg-zinc-950/90 backdrop-blur-md border border-zinc-800/90 rounded-lg hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400 shadow-xl transition-all cursor-pointer hover:border-zinc-700 active:scale-95 flex items-center justify-center"
+                title="Minimize Map"
+              >
+                <Minimize2 size={12} />
+              </button>
+            </>
+          ) : (
             <button
-              onClick={() => setIsMiniMapOpen(false)}
-              className="absolute bottom-[135px] right-4 z-10 p-1.5 bg-zinc-900/95 border border-zinc-800 rounded-md hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400 shadow-md transition-all cursor-pointer hover:border-zinc-700 active:scale-95 flex items-center justify-center"
-              title="Minimize Map"
+              onClick={() => setIsMiniMapOpen(true)}
+              className="absolute bottom-4 right-4 z-10 p-2.5 bg-zinc-950/90 backdrop-blur-md border border-zinc-800/90 rounded-lg hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400 shadow-xl transition-all cursor-pointer hover:border-zinc-700 active:scale-95 flex items-center justify-center"
+              title="Expand 3D MiniMap"
             >
-              <Minimize2 size={12} />
+              <Map size={15} />
             </button>
-          </>
-        ) : (
-          <button
-            onClick={() => setIsMiniMapOpen(true)}
-            className="absolute bottom-4 right-4 z-10 p-2.5 bg-zinc-900/95 border border-zinc-800 rounded-md hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400 shadow-md transition-all cursor-pointer hover:border-zinc-700 active:scale-95 flex items-center justify-center"
-            title="Expand Map"
-          >
-            <Map size={15} />
-          </button>
-        )}
-      </ReactFlow>
+          )}
+        </ReactFlow>
+      </div>
 
-
+      {/* ── Context Menu ── */}
       {menu && (
         <ContextMenu
           id={menu.id}
@@ -531,6 +584,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         />
       )}
 
+      {/* ── Details Drawer ── */}
       {selectedNode && (
         <DetailsDrawer
           node={selectedNode}
@@ -545,12 +599,12 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
 export default function FlowCanvas({ activeSessionId, getToken, isGuest, sessions, setSessions }) {
   return (
     <ReactFlowProvider>
-      <FlowCanvasInner 
-        activeSessionId={activeSessionId} 
-        getToken={getToken} 
-        isGuest={isGuest} 
-        sessions={sessions} 
-        setSessions={setSessions} 
+      <FlowCanvasInner
+        activeSessionId={activeSessionId}
+        getToken={getToken}
+        isGuest={isGuest}
+        sessions={sessions}
+        setSessions={setSessions}
       />
     </ReactFlowProvider>
   );

@@ -9,7 +9,9 @@ import {
   Check, 
   X, 
   Settings,
-  ChevronDown
+  ChevronDown,
+  Box,
+  Sparkles
 } from "lucide-react";
 import { SignInButton, SignUpButton, Show, UserButton, useUser } from "@clerk/nextjs";
 import { shadesOfPurple } from "@clerk/themes";
@@ -117,7 +119,16 @@ export default function Sidebar({
   isGuest
 }) {
   const { user } = useUser();
-  const { nodeShape, changeNodeShape, edgeStyle, changeEdgeStyle } = useMapConfig();
+  const { 
+    nodeShape, 
+    changeNodeShape, 
+    edgeStyle, 
+    changeEdgeStyle,
+    viewMode,
+    changeViewMode,
+    enableParallax,
+    toggleParallax,
+  } = useMapConfig();
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
@@ -379,6 +390,65 @@ export default function Sidebar({
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* 3D Spatial Mode Selector */}
+            <div className="flex flex-col gap-2 pt-1 border-t border-zinc-800/60">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">3D Spatial View</label>
+                <span className="text-[8px] font-mono font-bold bg-blue-500/10 text-blue-400 px-1 py-0.5 rounded border border-blue-500/20">3D</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800/80">
+                <button
+                  onClick={() => changeViewMode("3d-perspective")}
+                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                    viewMode === "3d-perspective"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                  title="3D Perspective with horizon vanishing point"
+                >
+                  <Box size={11} />
+                  <span>Orbit</span>
+                </button>
+                <button
+                  onClick={() => changeViewMode("3d-isometric")}
+                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                    viewMode === "3d-isometric"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                  title="3D Isometric angle"
+                >
+                  <span>Iso</span>
+                </button>
+                <button
+                  onClick={() => changeViewMode("3d-topdown")}
+                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                    viewMode === "3d-topdown"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                  title="Top-down 3D studio with extruded nodes & shadows"
+                >
+                  <span>Studio</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Parallax Cursor Reaction */}
+            <div className="flex items-center justify-between px-1 pt-1 border-t border-zinc-800/60">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Cursor Parallax</span>
+              <button
+                onClick={toggleParallax}
+                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold cursor-pointer transition-colors ${
+                  enableParallax
+                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/30"
+                    : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                }`}
+              >
+                {enableParallax ? "ON" : "OFF"}
+              </button>
             </div>
           </div>
         )}
