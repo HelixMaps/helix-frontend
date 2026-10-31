@@ -148,6 +148,16 @@ export default function ThreeDimensionalCard({
     [id, type, theme.accent, setNodes, setEdges]
   );
 
+  // Physical 3D Elevation: Node floats off the floor according to its elevation value
+  const slabElevation = is2D ? 0 : Math.round(26 + (elevation || 40) * 0.35);
+  const activeElevation = is2D
+    ? 0
+    : tilt.isHovered
+    ? slabElevation + 16
+    : selected
+    ? slabElevation + 6
+    : slabElevation;
+
   return (
     <div
       className="relative select-none"
@@ -156,74 +166,79 @@ export default function ThreeDimensionalCard({
       }}
     >
       {/* ─────────────────────────────────────────────────────────────
-          1. CNC-MILLED BASE CHASSIS (Layer 1: Beveled Titanium Plate)
+          1. GROUND PROJECTION SHADOW & UNDERGLOW (Floor plane at Z=0)
+          Provides real 3D parallax proof that the slab is floating high above!
          ───────────────────────────────────────────────────────────── */}
       {!is2D && (
         <div
-          className={`absolute -inset-1.5 rounded-[22px] pointer-events-none transition-all duration-300 border ${
-            selected
-              ? "border-zinc-500/80 shadow-[0_0_20px_rgba(255,255,255,0.08)]"
-              : "border-zinc-700/60"
-          }`}
+          className="absolute inset-x-2 -bottom-3 h-12 pointer-events-none transition-all duration-300 rounded-full"
           style={{
-            background:
-              "linear-gradient(180deg, #2c2e39 0%, #1e2029 55%, #13141a 100%)",
             transform: "translateZ(0px)",
-            boxShadow: selected
-              ? `0 14px 28px -4px rgba(0, 0, 0, 0.75), 0 0 20px 2px ${theme.floorGlow}`
-              : tilt.isHovered
-              ? "0 18px 36px -6px rgba(0, 0, 0, 0.8), 0 6px 14px rgba(0, 0, 0, 0.45)"
-              : "0 10px 22px -4px rgba(0, 0, 0, 0.7), 0 4px 8px rgba(0, 0, 0, 0.35)",
+            background: `radial-gradient(ellipse at center, rgba(0, 0, 0, ${
+              tilt.isHovered ? 0.85 : 0.7
+            }) 0%, ${theme.floorGlow} 40%, transparent 75%)`,
+            filter: `blur(${tilt.isHovered ? 14 : 10}px)`,
+            opacity: tilt.isHovered ? 0.95 : 0.8,
+            transformOrigin: "center center",
+            transform: `scale(${tilt.isHovered ? 1.12 : 1}) translate(0, ${Math.round(
+              activeElevation * 0.22
+            )}px)`,
           }}
-        >
-          {/* Precision Chamfer Bevel Catch Line */}
-          <div className="absolute top-0 left-3 right-3 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-          <div className="absolute bottom-0 left-3 right-3 h-[1px] bg-gradient-to-r from-transparent via-black/50 to-transparent" />
-        </div>
+        />
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          2. ELEVATED PRECISION TOP DECK (Layer 2: Machined Surface)
+          2. ELEVATED SOLID MONOLITHIC SLAB (Hovering at Z=activeElevation)
          ───────────────────────────────────────────────────────────── */}
       <div
         ref={cardRef}
         onMouseMove={handlers.onMouseMove}
         onMouseLeave={handlers.onMouseLeave}
         className={`group relative min-w-[215px] cursor-pointer ${activeShapeClass} transition-all duration-200 border-[1.5px] ${
-          selected ? theme.borderSelected : "border-zinc-700/80 hover:border-zinc-500"
+          selected ? theme.borderSelected : "border-zinc-600/70 hover:border-zinc-400"
         }`}
         style={{
           background:
-            "linear-gradient(145deg, #242631 0%, #1c1d25 50%, #14151b 100%)",
+            "linear-gradient(150deg, #2b2d37 0%, #202129 55%, #15161e 100%)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           transformStyle: "preserve-3d",
           transform: is2D
             ? "none"
             : tilt.isHovered
-            ? `translateY(-4px) translateZ(16px) rotateX(${tilt.x * 0.75}deg) rotateY(${tilt.y * 0.75}deg)`
+            ? `translateY(-6px) translateZ(${activeElevation}px) rotateX(${tilt.x * 0.7}deg) rotateY(${tilt.y * 0.7}deg)`
             : selected
-            ? "translateY(-2px) translateZ(12px)"
-            : "translateY(0px) translateZ(8px)",
+            ? `translateY(-2px) translateZ(${activeElevation}px)`
+            : `translateY(0px) translateZ(${activeElevation}px)`,
           boxShadow: is2D
             ? selected
               ? `0 0 0 2px ${theme.accent}, 0 4px 14px rgba(0, 0, 0, 0.7), 0 0 16px ${theme.floorGlow}`
               : "0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 18px rgba(0, 0, 0, 0.45)"
             : `
-              inset 0 1px 1px 0 rgba(255, 255, 255, 0.25),
-              inset 0 -1px 2px 0 rgba(0, 0, 0, 0.6),
-              0 4px 12px rgba(0, 0, 0, 0.5)
+              /* Top micro-chamfer specular highlight */
+              inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.4),
+              /* Bottom inner bevel depth */
+              inset 0 -2px 4px 0 rgba(0, 0, 0, 0.7),
+              /* Solid 4px machined slab sidewall bevels */
+              0 1px 0 0 #464856,
+              0 2px 0 0 #363844,
+              0 3px 0 0 #272832,
+              0 4px 0 0 #1b1c23,
+              /* Floating ambient drop shadow */
+              0 8px 22px -2px rgba(0, 0, 0, 0.7),
+              0 16px 36px -4px rgba(0, 0, 0, 0.55),
+              0 0 16px ${theme.floorGlow}
             `,
         }}
       >
         {/* Micro-chamfer Top Catch Line */}
-        <div className="pointer-events-none absolute top-0 left-3 right-3 h-[1.5px] bg-gradient-to-r from-transparent via-white/40 to-transparent z-10" />
+        <div className="pointer-events-none absolute top-0 left-3 right-3 h-[1.5px] bg-gradient-to-r from-transparent via-white/45 to-transparent z-10" />
 
         {/* Illuminated Left Edge Power Rail */}
         <div
-          className={`absolute left-0 top-3 bottom-3 w-[2.5px] rounded-r-full ${theme.powerRail} transition-all duration-300 z-10`}
+          className={`absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full ${theme.powerRail} transition-all duration-300 z-10`}
           style={{
-            boxShadow: `0 0 8px ${theme.accent}`,
+            boxShadow: `0 0 10px ${theme.accent}`,
           }}
         />
 
@@ -232,7 +247,7 @@ export default function ThreeDimensionalCard({
           className="pointer-events-none absolute inset-0 rounded-[inherit] overflow-hidden transition-opacity duration-300 z-10"
           style={{
             opacity: tilt.isHovered ? 1 : 0,
-            background: `radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.04) 45%, transparent 70%)`,
+            background: `radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 45%, transparent 70%)`,
           }}
         />
 
@@ -308,8 +323,11 @@ export default function ThreeDimensionalCard({
                   : typeLabel}
               </span>
 
-              {/* Subtle Altitude Marker */}
-              <span className="px-1.5 py-0.5 rounded bg-zinc-800/80 border border-zinc-700/50 text-[8px] font-mono text-zinc-400 font-bold">
+              {/* Elevated Altitude Pill */}
+              <span
+                className="px-1.5 py-0.5 rounded-md bg-zinc-900/90 border border-zinc-700/70 text-[8px] font-mono text-zinc-300 font-bold shadow-sm"
+                title={`3D Elevation: ${elevation}m`}
+              >
                 +{elevation}m
               </span>
             </div>

@@ -454,20 +454,10 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         perspective: is3D ? "1400px" : "none",
         perspectiveOrigin: "50% 40%",
         background: is3D
-          ? "radial-gradient(ellipse 95% 70% at 50% 30%, #2a2a32 0%, #1f1f26 45%, #17171d 80%, #121216 100%)"
+          ? "linear-gradient(180deg, #242630 0%, #1c1d25 100%)"
           : "#1c1c22",
       }}
     >
-      {/* ── Volumetric Studio Ambient Key Light (in 3D Mode) ── */}
-      {is3D && (
-        <div
-          className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[1100px] h-[750px] rounded-full opacity-60 blur-[110px]"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(210, 210, 225, 0.03) 50%, transparent 75%)",
-          }}
-        />
-      )}
 
       {/* ── Minimalist Mode Badge ── */}
       <div className="absolute top-5 left-16 z-20 pointer-events-none select-none flex items-center gap-2">
@@ -542,44 +532,46 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           )}
 
 
-          {/* 3D MiniMap */}
-          {isMiniMapOpen ? (
-            <>
-              <MiniMap
-                width={160}
-                height={110}
-                className="!bg-zinc-900/95 !backdrop-blur-md !border-zinc-800 !rounded-xl !shadow-2xl"
-                maskColor="rgba(9, 9, 11, 0.75)"
-                nodeColor={(node) => {
-                  if (node.type === "idea") return "#1e3a8a";
-                  if (node.type === "task") return "#065f46";
-                  if (node.type === "resource") return "#78350f";
-                  return "#18181b";
-                }}
-                nodeStrokeWidth={1.5}
-                nodeStrokeColor={(node) => {
-                  if (node.type === "idea") return "#60a5fa";
-                  if (node.type === "task") return "#34d399";
-                  if (node.type === "resource") return "#fbbf24";
-                  return "#3f3f46";
-                }}
-              />
+          {/* MiniMap — ONLY rendered in 2D mode; completely hidden in 3D */}
+          {!is3D && (
+            isMiniMapOpen ? (
+              <>
+                <MiniMap
+                  width={160}
+                  height={110}
+                  className="!bg-zinc-900/95 !backdrop-blur-md !border-zinc-800 !rounded-xl !shadow-2xl"
+                  maskColor="rgba(9, 9, 11, 0.75)"
+                  nodeColor={(node) => {
+                    if (node.type === "idea") return "#1e3a8a";
+                    if (node.type === "task") return "#065f46";
+                    if (node.type === "resource") return "#78350f";
+                    return "#18181b";
+                  }}
+                  nodeStrokeWidth={1.5}
+                  nodeStrokeColor={(node) => {
+                    if (node.type === "idea") return "#60a5fa";
+                    if (node.type === "task") return "#34d399";
+                    if (node.type === "resource") return "#fbbf24";
+                    return "#3f3f46";
+                  }}
+                />
+                <button
+                  onClick={() => setIsMiniMapOpen(false)}
+                  className="absolute bottom-[140px] right-4 z-10 p-1.5 bg-zinc-900/95 backdrop-blur-md border border-zinc-800 rounded-lg hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400 shadow-xl transition-all cursor-pointer hover:border-zinc-700 active:scale-95 flex items-center justify-center"
+                  title="Minimize Map"
+                >
+                  <Minimize2 size={12} />
+                </button>
+              </>
+            ) : (
               <button
-                onClick={() => setIsMiniMapOpen(false)}
-                className="absolute bottom-[140px] right-4 z-10 p-1.5 bg-zinc-900/95 backdrop-blur-md border border-zinc-800 rounded-lg hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400 shadow-xl transition-all cursor-pointer hover:border-zinc-700 active:scale-95 flex items-center justify-center"
-                title="Minimize Map"
+                onClick={() => setIsMiniMapOpen(true)}
+                className="absolute bottom-4 right-4 z-10 p-2.5 bg-zinc-900/95 backdrop-blur-md border border-zinc-800 rounded-lg hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400 shadow-xl transition-all cursor-pointer hover:border-zinc-700 active:scale-95 flex items-center justify-center"
+                title="Expand MiniMap"
               >
-                <Minimize2 size={12} />
+                <Map size={15} />
               </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsMiniMapOpen(true)}
-              className="absolute bottom-4 right-4 z-10 p-2.5 bg-zinc-900/95 backdrop-blur-md border border-zinc-800 rounded-lg hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400 shadow-xl transition-all cursor-pointer hover:border-zinc-700 active:scale-95 flex items-center justify-center"
-              title="Expand 3D MiniMap"
-            >
-              <Map size={15} />
-            </button>
+            )
           )}
         </ReactFlow>
       </div>
