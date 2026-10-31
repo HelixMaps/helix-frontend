@@ -4,7 +4,6 @@ import React, { useCallback, useState, useEffect, useRef } from "react";
 import {
   ReactFlow,
   MiniMap,
-  Controls,
   Background,
   useNodesState,
   useEdgesState,
@@ -19,7 +18,7 @@ import IdeaNode from "./nodes/IdeaNode";
 import TaskNode from "./nodes/TaskNode";
 import ResourceNode from "./nodes/ResourceNode";
 import ThreeDimensionalEdge from "./edges/ThreeDimensionalEdge";
-import Canvas3DControls from "./Canvas3DControls";
+import SpatialCommandDeck from "./SpatialCommandDeck";
 import Spatial3DEnvironment from "./Spatial3DEnvironment";
 import NodePicker from "./NodePicker";
 import ContextMenu from "./ContextMenu";
@@ -486,8 +485,8 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         activeSearch={activeSearch}
       />
 
-      {/* ── 3D Viewport Controls HUD ── */}
-      <Canvas3DControls />
+      {/* ── Spatial Command Deck (Centered bottom HUD) ── */}
+      <SpatialCommandDeck onAddNode={addNodeAtCenter} />
 
       {/* ── 3D Transformed Canvas Stage ── */}
       <div
@@ -521,11 +520,6 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           {/* Spatial 3D dot grid background */}
           <Background variant="dots" gap={26} size={1.6} color="#27272a" />
 
-          {/* Controls */}
-          <Controls
-            className="!bg-zinc-900/90 !backdrop-blur-md !border-zinc-800/90 !text-zinc-200 !shadow-[0_12px_28px_rgba(0,0,0,0.8)] !rounded-xl [&>button]:!border-zinc-800/80 [&>button]:!bg-transparent hover:[&>button]:!bg-zinc-800 [&_path]:fill-zinc-200"
-            showInteractive={false}
-          />
 
           {/* 3D Holographic MiniMap */}
           {isMiniMapOpen ? (

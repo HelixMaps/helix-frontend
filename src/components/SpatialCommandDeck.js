@@ -1,0 +1,161 @@
+"use client";
+
+import React, { useState } from "react";
+import { 
+  Lightbulb, 
+  CheckSquare, 
+  Link2, 
+  Box, 
+  Grid, 
+  Eye, 
+  Sparkles, 
+  Maximize2, 
+  ZoomIn, 
+  ZoomOut, 
+  Wand2,
+  ChevronDown
+} from "lucide-react";
+import { useMapConfig } from "@/context/MapConfigContext";
+import { useReactFlow } from "@xyflow/react";
+import { layoutNodesHierarchical } from "@/utils/autoLayout";
+
+/**
+ * SpatialCommandDeck
+ * Centered floating HUD dock at the bottom of the canvas:
+ * - Guaranteed high z-index (z-50) so it NEVER clips or hides behind sidebars
+ * - Quick Node Spawners: Idea, Task, Resource
+ * - One-click "Auto-Organize Matrix" layout
+ * - 3D View Mode Switcher: 3D Matrix, Isometric, Clean Studio
+ * - Camera controls: Fit View, Zoom +, Zoom -
+ */
+export default function SpatialCommandDeck({ onAddNode }) {
+  const { viewMode, changeViewMode } = useMapConfig();
+  const { getNodes, getEdges, setNodes, fitView, zoomIn, zoomOut } = useReactFlow();
+  const [isOrganizing, setIsOrganizing] = useState(false);
+
+  // Auto-Layout trigger
+  const handleAutoLayout = () => {
+    setIsOrganizing(true);
+    const currentNodes = getNodes();
+    const currentEdges = getEdges();
+    const { nodes: layouted } = layoutNodesHierarchical(currentNodes, currentEdges);
+    setNodes(layouted);
+
+    setTimeout(() => {
+      fitView({ padding: 0.35, duration: 600 });
+      setIsOrganizing(false);
+    }, 100);
+  };
+
+  const handleResetCamera = () => {
+    fitView({ padding: 0.35, duration: 600 });
+  };
+
+  const modes = [
+    { id: "3d-perspective", label: "3D Orbit", icon: Box, tooltip: "3D Perspective View" },
+    { id: "3d-isometric", label: "Isometric", icon: Grid, tooltip: "3D Isometric Grid" },
+    { id: "3d-topdown", label: "Studio 2D", icon: Eye, tooltip: "Clean Top-Down Studio" },
+  ];
+
+  return (
+    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 select-none pointer-events-auto">
+      {/* ── UNIFIED SPATIAL COMMAND ISLAND ── */}
+      <div
+        className="flex items-center gap-2 px-3 py-2 bg-zinc-950/90 backdrop-blur-2xl border border-zinc-700/80 rounded-2xl transition-all duration-300"
+        style={{
+          boxShadow:
+            "0 4px 0 0 #18181b, 0 20px 48px -4px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.25)",
+        }}
+      >
+        {/* Quick Node Spawners */}
+        <div className="flex items-center gap-1 pr-2 border-r border-zinc-800/80">
+          <button
+            onClick={() => onAddNode("idea")}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold cursor-pointer active:scale-95 transition-all shadow-sm"
+            title="Create new Idea Node"
+          >
+            <Lightbulb size={13} className="text-blue-400" />
+            <span className="hidden sm:inline">Idea</span>
+          </button>
+
+          <button
+            onClick={() => onAddNode("task")}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold cursor-pointer active:scale-95 transition-all shadow-sm"
+            title="Create new Task Node"
+          >
+            <CheckSquare size={13} className="text-emerald-400" />
+            <span className="hidden sm:inline">Task</span>
+          </button>
+
+          <button
+            onClick={() => onAddNode("resource")}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-semibold cursor-pointer active:scale-95 transition-all shadow-sm"
+            title="Create new Resource Node"
+          >
+            <Link2 size={13} className="text-amber-400" />
+            <span className="hidden sm:inline">Resource</span>
+          </button>
+        </div>
+
+        {/* Auto-Organize Magic Button */}
+        <button
+          onClick={handleAutoLayout}
+          disabled={isOrganizing}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700/60 text-zinc-300 hover:text-white text-xs font-semibold cursor-pointer active:scale-95 transition-all"
+          title="Auto-organize nodes into clean hierarchical layout"
+        >
+          <Wand2 size={13} className={`text-indigo-400 ${isOrganizing ? "animate-spin" : ""}`} />
+          <span className="hidden md:inline">Organize</span>
+        </button>
+
+        {/* Spatial 3D View Mode Segmented Pill */}
+        <div className="flex items-center gap-0.5 bg-zinc-900/80 p-0.5 rounded-xl border border-zinc-800/80">
+          {modes.map((m) => {
+            const Icon = m.icon;
+            const isActive = viewMode === m.id;
+            return (
+              <button
+                key={m.id}
+                onClick={() => changeViewMode(m.id)}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                  isActive
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_2px_8px_rgba(59,130,246,0.5),inset_0_1px_0_rgba(255,255,255,0.3)]"
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                }`}
+                title={m.tooltip}
+              >
+                <Icon size={12} className={isActive ? "text-white" : "text-zinc-400"} />
+                <span className="hidden lg:inline">{m.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Camera Navigation: Zoom & Fit */}
+        <div className="flex items-center border-l border-zinc-800/80 pl-2 gap-0.5">
+          <button
+            onClick={() => zoomIn({ duration: 300 })}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 cursor-pointer transition-colors"
+            title="Zoom In"
+          >
+            <ZoomIn size={13} />
+          </button>
+          <button
+            onClick={() => zoomOut({ duration: 300 })}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 cursor-pointer transition-colors"
+            title="Zoom Out"
+          >
+            <ZoomOut size={13} />
+          </button>
+          <button
+            onClick={handleResetCamera}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 cursor-pointer transition-colors"
+            title="Fit View & Center Map"
+          >
+            <Maximize2 size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
