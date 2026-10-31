@@ -154,13 +154,13 @@ export default function ThreeDimensionalCard({
         0 1px 0 0 ${theme.accentLight},
         0 2px 0 0 ${theme.accent},
         0 3px 0 0 ${theme.accentDark},
-        0 4px 0 0 #18181b,
-        0 5px 0 0 #121215,
-        0 6px 0 0 #09090b,
-        0 14px 24px -2px rgba(0, 0, 0, 0.85),
-        0 30px 60px -8px rgba(0, 0, 0, 0.85),
+        0 4px 0 0 #172554,
+        0 5px 0 0 #0f172a,
+        0 6px 0 0 #020713,
+        0 14px 24px -2px rgba(2, 6, 23, 0.85),
+        0 30px 60px -8px rgba(2, 6, 23, 0.95),
         0 16px 36px -2px ${theme.floorGlowHover},
-        0 0 20px 2px ${theme.floorGlow}
+        0 0 24px 2px ${theme.floorGlow}
       `;
     }
 
@@ -168,14 +168,14 @@ export default function ThreeDimensionalCard({
       return `
         inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
         inset 0 -2px 4px 0 rgba(0, 0, 0, 0.6),
-        0 1px 0 0 #3f3f46,
-        0 2px 0 0 #27272a,
-        0 3px 0 0 #202024,
-        0 4px 0 0 #18181b,
-        0 5px 0 0 #121215,
-        0 6px 0 0 #09090b,
-        0 14px 20px -2px rgba(0, 0, 0, 0.8),
-        0 32px 52px -10px rgba(0, 0, 0, 0.9),
+        0 1px 0 0 #334155,
+        0 2px 0 0 #1e3a8a,
+        0 3px 0 0 #172554,
+        0 4px 0 0 #0f172a,
+        0 5px 0 0 #0a1122,
+        0 6px 0 0 #020713,
+        0 14px 20px -2px rgba(2, 6, 23, 0.8),
+        0 32px 52px -10px rgba(2, 6, 23, 0.95),
         0 18px 32px -4px ${theme.floorGlowHover}
       `;
     }
@@ -183,14 +183,14 @@ export default function ThreeDimensionalCard({
     return `
       inset 0 1px 0 0 rgba(255, 255, 255, 0.25),
       inset 0 -2px 4px 0 rgba(0, 0, 0, 0.6),
-      0 1px 0 0 #27272a,
-      0 2px 0 0 #222226,
-      0 3px 0 0 #1c1c20,
-      0 4px 0 0 #17171b,
-      0 5px 0 0 #101014,
-      0 6px 0 0 #09090b,
-      0 10px 16px -2px rgba(0, 0, 0, 0.8),
-      0 22px 38px -6px rgba(0, 0, 0, 0.75),
+      0 1px 0 0 #1e293b,
+      0 2px 0 0 #172554,
+      0 3px 0 0 #0f172a,
+      0 4px 0 0 #0c152a,
+      0 5px 0 0 #070e1e,
+      0 6px 0 0 #020713,
+      0 10px 16px -2px rgba(2, 6, 23, 0.8),
+      0 22px 38px -6px rgba(2, 6, 23, 0.85),
       0 12px 24px -4px ${theme.floorGlow}
     `;
   }, [selected, tilt.isHovered, theme]);
@@ -210,11 +210,11 @@ export default function ThreeDimensionalCard({
         onMouseMove={handlers.onMouseMove}
         onMouseLeave={handlers.onMouseLeave}
         className={`group relative min-w-[195px] cursor-pointer ${activeShapeClass} transition-all duration-300 ease-out border-[1.5px] ${
-          selected ? theme.borderSelected : `${theme.borderResting} hover:border-zinc-500`
+          selected ? theme.borderSelected : `${theme.borderResting} hover:border-blue-400/60`
         }`}
         style={{
           background:
-            "linear-gradient(135deg, rgba(22, 26, 36, 0.94) 0%, rgba(12, 15, 23, 0.97) 50%, rgba(6, 8, 14, 0.99) 100%)",
+            "linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 18, 38, 0.97) 50%, rgba(4, 10, 24, 0.99) 100%)",
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
           boxShadow: cardShadows,

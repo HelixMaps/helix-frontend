@@ -34,27 +34,28 @@ export default function Spatial3DEnvironment({ pitch = 20, yaw = -4 }) {
 
     window.addEventListener("resize", handleResize);
 
-    // Drifting starfield particles in infinite space
-    const particleCount = 75;
+    // Drifting starfield particles in infinite blue space
+    const particleCount = 110;
+    const starColors = ["#60a5fa", "#93c5fd", "#38bdf8", "#818cf8", "#bfdbfe", "#ffffff"];
     const particles = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      z: Math.random() * 900 + 100,
-      radius: Math.random() * 1.6 + 0.6,
-      baseAlpha: Math.random() * 0.5 + 0.25,
-      speedX: (Math.random() - 0.5) * 0.25,
-      speedY: (Math.random() - 0.5) * 0.25,
-      color: Math.random() > 0.4 ? "#60a5fa" : Math.random() > 0.5 ? "#34d399" : "#a78bfa",
+      z: Math.random() * 950 + 50,
+      radius: Math.random() * 1.8 + 0.5,
+      baseAlpha: Math.random() * 0.6 + 0.35,
+      speedX: (Math.random() - 0.5) * 0.2,
+      speedY: (Math.random() - 0.5) * 0.2,
+      color: starColors[Math.floor(Math.random() * starColors.length)],
     }));
 
     let time = 0;
 
     const render = () => {
-      time += 0.01;
+      time += 0.012;
       ctx.clearRect(0, 0, width, height);
 
-      const parallaxX = (yaw / 45) * 35;
-      const parallaxY = (pitch / 45) * 25;
+      const parallaxX = (yaw / 45) * 40;
+      const parallaxY = (pitch / 45) * 30;
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
@@ -66,19 +67,19 @@ export default function Spatial3DEnvironment({ pitch = 20, yaw = -4 }) {
         if (p.y < 0) p.y = height;
         if (p.y > height) p.y = 0;
 
-        const depthScale = 450 / p.z;
+        const depthScale = 500 / p.z;
         const currentRadius = p.radius * depthScale;
-        const pulse = Math.sin(time + i * 0.5) * 0.25 + 0.75;
-        const alpha = Math.min(1, Math.max(0, p.baseAlpha * pulse * (1 - p.z / 1100)));
+        const pulse = Math.sin(time * 1.5 + i * 0.4) * 0.3 + 0.7;
+        const alpha = Math.min(1, Math.max(0, p.baseAlpha * pulse * (1 - p.z / 1200)));
 
-        const drawX = p.x + parallaxX * (1 - p.z / 1100);
-        const drawY = p.y + parallaxY * (1 - p.z / 1100);
+        const drawX = p.x + parallaxX * (1 - p.z / 1200);
+        const drawY = p.y + parallaxY * (1 - p.z / 1200);
 
         ctx.beginPath();
         ctx.arc(drawX, drawY, Math.max(0.6, currentRadius), 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.globalAlpha = alpha;
-        ctx.shadowBlur = 8 * depthScale;
+        ctx.shadowBlur = 10 * depthScale;
         ctx.shadowColor = p.color;
         ctx.fill();
       }
@@ -101,33 +102,45 @@ export default function Spatial3DEnvironment({ pitch = 20, yaw = -4 }) {
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden z-0 select-none">
-      {/* ── Infinite Cosmic Radial Background Gradient ── */}
+      {/* ── 1. Boundless Cosmic Blue Space Atmosphere ── */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 90% 70% at 50% 20%, rgba(30, 58, 138, 0.2) 0%, rgba(15, 23, 42, 0.5) 45%, #05070f 85%)",
+            "radial-gradient(ellipse 130% 95% at 50% 20%, #0d2a63 0%, #081d47 30%, #03102c 65%, #020718 100%)",
         }}
       />
 
-      {/* ── Parallax Starfield Canvas (Boundless Space) ── */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full opacity-70" />
-
-      {/* ── Volumetric Overhead Spotlight ── */}
+      {/* ── 2. Luminous Blue Nebula Clouds ── */}
       <div
-        className="absolute -top-32 left-1/2 -translate-x-1/2 w-[950px] h-[700px] rounded-full opacity-70 blur-[100px]"
+        className="absolute inset-0 opacity-70"
+        style={{
+          backgroundImage: `
+            radial-gradient(ellipse 55% 40% at 20% 30%, rgba(37, 99, 235, 0.3) 0%, transparent 70%),
+            radial-gradient(ellipse 65% 45% at 80% 55%, rgba(30, 64, 175, 0.25) 0%, transparent 70%),
+            radial-gradient(ellipse 90% 50% at 50% 12%, rgba(59, 130, 246, 0.28) 0%, transparent 80%)
+          `,
+        }}
+      />
+
+      {/* ── 3. Parallax 3D Starfield Canvas (Boundless Blue Celestial Space) ── */}
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full opacity-90" />
+
+      {/* ── 4. Overhead Volumetric Blue Spotlight (brings 3D nodes to life) ── */}
+      <div
+        className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1100px] h-[800px] rounded-full opacity-75 blur-[120px]"
         style={{
           background:
-            "radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(99, 102, 241, 0.1) 40%, transparent 75%)",
+            "radial-gradient(circle, rgba(96, 165, 250, 0.32) 0%, rgba(37, 99, 235, 0.22) 40%, rgba(29, 78, 216, 0.06) 70%, transparent 85%)",
         }}
       />
 
-      {/* ── Deep Vignette ── */}
+      {/* ── 5. Subtle Midnight Blue Vignette ── */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at 50% 50%, transparent 55%, rgba(3, 7, 18, 0.8) 100%)",
+            "radial-gradient(circle at 50% 50%, transparent 55%, rgba(2, 7, 24, 0.55) 100%)",
         }}
       />
     </div>

@@ -272,17 +272,17 @@ function DashboardContent() {
 
   if (!isLoaded || isLoading) {
     return (
-      <div className="flex h-screen w-screen bg-zinc-950 items-center justify-center text-zinc-400 font-sans">
+      <div className="flex h-screen w-screen bg-[#020718] items-center justify-center text-blue-400 font-sans">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 rounded-full border-2 border-zinc-800 border-t-zinc-400 animate-spin" />
-          <span className="text-xs uppercase tracking-wider font-semibold text-zinc-500 font-mono">Initializing Workspace...</span>
+          <div className="w-6 h-6 rounded-full border-2 border-blue-950 border-t-blue-500 animate-spin" />
+          <span className="text-xs uppercase tracking-wider font-semibold text-blue-400/80 font-mono">Initializing Workspace...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans relative">
+    <div className="flex h-screen w-screen bg-[#020718] text-zinc-100 overflow-hidden font-sans relative">
       {/* ── 1. Mobile Hamburger ── */}
       <button
         onClick={() => setIsMobileSidebarOpen(true)}
@@ -334,7 +334,7 @@ function DashboardContent() {
       </div>
 
       {/* ── 3. Main workspace ── */}
-      <main className="flex-1 h-full relative overflow-hidden bg-zinc-950">
+      <main className="flex-1 h-full relative overflow-hidden bg-[#020718]">
         {/* Desktop sidebar collapse toggle */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -410,10 +410,10 @@ function DashboardContent() {
 export default function Dashboard() {
   return (
     <Suspense fallback={
-      <div className="flex h-screen w-screen bg-zinc-950 items-center justify-center text-zinc-400 font-sans">
+      <div className="flex h-screen w-screen bg-[#020718] items-center justify-center text-blue-400 font-sans">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 rounded-full border-2 border-zinc-800 border-t-zinc-400 animate-spin" />
-          <span className="text-xs uppercase tracking-wider font-semibold text-zinc-500 font-mono">Initializing Workspace...</span>
+          <div className="w-6 h-6 rounded-full border-2 border-blue-950 border-t-blue-500 animate-spin" />
+          <span className="text-xs uppercase tracking-wider font-semibold text-blue-400/80 font-mono">Initializing Workspace...</span>
         </div>
       </div>
     }>

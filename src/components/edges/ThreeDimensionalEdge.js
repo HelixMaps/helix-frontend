@@ -73,14 +73,14 @@ export default function ThreeDimensionalEdge({
         </filter>
       </defs>
 
-      {/* 1. Floor Drop Shadow: Offset downward to simulate cable floating in 3D space */}
+      {/* 1. Deep Space Ambient Depth Shadow */}
       <path
         d={edgePath}
         fill="none"
-        stroke="rgba(0, 0, 0, 0.75)"
+        stroke="rgba(2, 7, 24, 0.8)"
         strokeWidth={selected ? 7 : 5}
         strokeLinecap="round"
-        transform="translate(0, 11)"
+        transform="translate(0, 8)"
         filter={`url(#${filterId})`}
         className="pointer-events-none transition-all duration-300"
       />
