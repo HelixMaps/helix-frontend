@@ -20,6 +20,7 @@ import TaskNode from "./nodes/TaskNode";
 import ResourceNode from "./nodes/ResourceNode";
 import ThreeDimensionalEdge from "./edges/ThreeDimensionalEdge";
 import Canvas3DControls from "./Canvas3DControls";
+import Spatial3DEnvironment from "./Spatial3DEnvironment";
 import NodePicker from "./NodePicker";
 import ContextMenu from "./ContextMenu";
 import DetailsDrawer from "./DetailsDrawer";
@@ -366,11 +367,15 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         y: event.clientY,
       });
 
+      const defaultElevations = { idea: 55, task: 35, resource: 75 };
       const newNode = {
         id: `${type}-${Date.now()}`,
         type,
         position,
-        data: { label: `New ${type.charAt(0).toUpperCase() + type.slice(1)}` },
+        data: { 
+          label: `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+          elevation: defaultElevations[type] || 50,
+        },
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -388,11 +393,15 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         y: height / 2,
       });
 
+      const defaultElevations = { idea: 55, task: 35, resource: 75 };
       const newNode = {
         id: `${type}-${Date.now()}`,
         type,
         position,
-        data: { label: `New ${type.charAt(0).toUpperCase() + type.slice(1)}` },
+        data: { 
+          label: `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+          elevation: defaultElevations[type] || 50,
+        },
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -451,19 +460,8 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         perspectiveOrigin: "50% 38%",
       }}
     >
-      {/* ── Volumetric Atmospheric Top Spotlight ── */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-80"
-        style={{
-          background:
-            "radial-gradient(ellipse 75% 55% at 50% 12%, rgba(59, 130, 246, 0.12) 0%, rgba(15, 23, 42, 0.35) 45%, transparent 80%)",
-        }}
-      />
-
-      {/* ── Horizon Vanishing Fog (Top Edge) in 3D Mode ── */}
-      {!isTopDown && (
-        <div className="pointer-events-none absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-[#030712] via-[#05070f]/90 to-transparent z-10" />
-      )}
+      {/* ── Spatial 3D Cosmic Grid & Starfield Environment ── */}
+      <Spatial3DEnvironment pitch={effectivePitch} yaw={effectiveYaw} />
 
       {/* ── Minimalist 3D Watermark ── */}
       <div className="absolute top-5 left-16 z-20 pointer-events-none select-none flex items-center gap-2">

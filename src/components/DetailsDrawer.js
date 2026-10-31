@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { X, Lightbulb, CheckSquare, Link2, FileText } from "lucide-react";
+import { X, Lightbulb, CheckSquare, Link2, FileText, Layers } from "lucide-react";
 
 export default function DetailsDrawer({ node, onClose, onUpdateData }) {
   const drawerRef = useRef(null);
@@ -28,6 +28,7 @@ export default function DetailsDrawer({ node, onClose, onUpdateData }) {
   const nodeType = node.type || "idea";
   const title = node.data?.label || "";
   const summary = node.data?.summary || "";
+  const elevation = node.data?.elevation || 45;
 
   // Styling configs for node types
   const typeConfig = {
@@ -101,6 +102,50 @@ export default function DetailsDrawer({ node, onClose, onUpdateData }) {
             className="w-full bg-zinc-900/40 hover:bg-zinc-900/60 focus:bg-zinc-900/80 border border-zinc-800 focus:border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-700 transition-all duration-150"
             placeholder="Enter title..."
           />
+        </div>
+
+        {/* 3D Spatial Elevation Control */}
+        <div className="flex flex-col gap-2.5 p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 shadow-inner">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 select-none flex items-center gap-1.5 font-mono">
+              <Layers size={13} className="text-blue-400" />
+              <span>3D Spatial Altitude</span>
+            </label>
+            <span className="text-xs font-mono font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+              +{elevation}m
+            </span>
+          </div>
+
+          <input
+            type="range"
+            min="15"
+            max="120"
+            step="5"
+            value={elevation}
+            onChange={(e) => onUpdateData(node.id, { elevation: Number(e.target.value) })}
+            className="w-full accent-blue-500 bg-zinc-800 h-1.5 rounded-lg appearance-none cursor-pointer mt-1"
+          />
+
+          <div className="grid grid-cols-4 gap-1.5 mt-1">
+            {[
+              { label: "Ground", val: 15 },
+              { label: "Low", val: 40 },
+              { label: "Mid", val: 70 },
+              { label: "Apex", val: 105 },
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                onClick={() => onUpdateData(node.id, { elevation: preset.val })}
+                className={`py-1 text-[10px] font-mono font-bold rounded-lg border transition-all cursor-pointer ${
+                  elevation === preset.val
+                    ? "bg-blue-600 border-blue-400 text-white shadow-sm"
+                    : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                }`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Summary Edit Block */}

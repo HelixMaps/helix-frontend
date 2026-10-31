@@ -57,6 +57,7 @@ export default function TaskNode({ id, data, selected }) {
       typeLabel="Task"
       icon={CheckSquare}
       accentColor="emerald"
+      elevation={data?.elevation ?? 35}
       isEditing={Boolean(data?.isEditing)}
       selected={selected}
       onLabelChange={onChange}

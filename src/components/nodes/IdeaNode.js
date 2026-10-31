@@ -57,6 +57,7 @@ export default function IdeaNode({ id, data, selected }) {
       typeLabel="Idea"
       icon={Lightbulb}
       accentColor="blue"
+      elevation={data?.elevation ?? 55}
       isEditing={Boolean(data?.isEditing)}
       selected={selected}
       onLabelChange={onChange}

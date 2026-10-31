@@ -57,6 +57,7 @@ export default function ResourceNode({ id, data, selected }) {
       typeLabel="Resource"
       icon={Link2}
       accentColor="amber"
+      elevation={data?.elevation ?? 70}
       isEditing={Boolean(data?.isEditing)}
       selected={selected}
       onLabelChange={onChange}

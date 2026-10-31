@@ -41,19 +41,19 @@ function DashboardContent() {
           {
             id: "root-1",
             type: "idea",
-            data: { label: "Central Idea" },
+            data: { label: "Central Idea", elevation: 60 },
             position: { x: 250, y: 150 },
           },
           {
             id: "child-1",
             type: "task",
-            data: { label: "Define Requirements" },
+            data: { label: "Define Requirements", elevation: 35 },
             position: { x: 100, y: 300 },
           },
           {
             id: "child-2",
             type: "resource",
-            data: { label: "React Flow Docs" },
+            data: { label: "React Flow Docs", elevation: 85 },
             position: { x: 400, y: 300 },
           },
         ],
@@ -140,7 +140,7 @@ function DashboardContent() {
           {
             id: "root-1",
             type: "idea",
-            data: { label: "Central Idea" },
+            data: { label: "Central Idea", elevation: 60 },
             position: { x: 250, y: 150 },
           }
         ],
