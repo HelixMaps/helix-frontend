@@ -453,9 +453,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
       style={{
         perspective: is3D ? "1400px" : "none",
         perspectiveOrigin: "50% 40%",
-        background: is3D
-          ? "linear-gradient(180deg, #242630 0%, #1c1d25 100%)"
-          : "#1c1c22",
+        background: "#1c1c22",
       }}
     >
 

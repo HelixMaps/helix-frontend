@@ -148,86 +148,115 @@ export default function ThreeDimensionalCard({
     [id, type, theme.accent, setNodes, setEdges]
   );
 
-  // Physical 3D Elevation: Node floats off the floor according to its elevation value
-  const slabElevation = is2D ? 0 : Math.round(26 + (elevation || 40) * 0.35);
-  const activeElevation = is2D
-    ? 0
-    : tilt.isHovered
-    ? slabElevation + 16
-    : selected
-    ? slabElevation + 6
-    : slabElevation;
-
   return (
     <div
-      className="relative select-none"
+      ref={cardRef}
+      onMouseMove={handlers.onMouseMove}
+      onMouseLeave={handlers.onMouseLeave}
+      className="relative select-none cursor-pointer"
       style={{
         transformStyle: "preserve-3d",
+        transform: is2D
+          ? "none"
+          : tilt.isHovered
+          ? `translateY(-6px) rotateX(${tilt.x * 0.65}deg) rotateY(${tilt.y * 0.65}deg)`
+          : selected
+          ? "translateY(-3px)"
+          : "none",
+        transition: "transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)",
       }}
     >
       {/* ─────────────────────────────────────────────────────────────
-          1. GROUND PROJECTION SHADOW & UNDERGLOW (Floor plane at Z=0)
-          Provides real 3D parallax proof that the slab is floating high above!
+          1. 3D BRICK GROUND CONTACT SHADOW (Floor plane at Z=0)
          ───────────────────────────────────────────────────────────── */}
       {!is2D && (
         <div
-          className="absolute inset-x-2 -bottom-3 h-12 pointer-events-none transition-all duration-300 rounded-full"
+          className={`absolute inset-0 ${activeShapeClass} pointer-events-none transition-all duration-300`}
           style={{
             transform: "translateZ(0px)",
-            background: `radial-gradient(ellipse at center, rgba(0, 0, 0, ${
-              tilt.isHovered ? 0.85 : 0.7
-            }) 0%, ${theme.floorGlow} 40%, transparent 75%)`,
-            filter: `blur(${tilt.isHovered ? 14 : 10}px)`,
-            opacity: tilt.isHovered ? 0.95 : 0.8,
-            transformOrigin: "center center",
-            transform: `scale(${tilt.isHovered ? 1.12 : 1}) translate(0, ${Math.round(
-              activeElevation * 0.22
-            )}px)`,
+            boxShadow: selected
+              ? `0 20px 40px -4px rgba(0, 0, 0, 0.95), 0 0 28px 4px ${theme.floorGlow}`
+              : tilt.isHovered
+              ? "0 26px 48px -6px rgba(0, 0, 0, 0.95), 0 10px 22px rgba(0, 0, 0, 0.85)"
+              : "0 14px 28px -4px rgba(0, 0, 0, 0.9), 0 6px 14px rgba(0, 0, 0, 0.8)",
           }}
         />
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          2. ELEVATED SOLID MONOLITHIC SLAB (Hovering at Z=activeElevation)
+          2. SOLID 3D BRICK SLAB EXTRUSION (Physical 3D Slices: Z=0 to Z=14px)
+          Creates a continuous, tangible physical brick slab in 3D space
+         ───────────────────────────────────────────────────────────── */}
+      {!is2D && (
+        <>
+          {/* Base plate at Z=0 */}
+          <div
+            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-800/90`}
+            style={{
+              background: "#121319",
+              transform: "translateZ(0px)",
+            }}
+          />
+          {/* Extrusion slice 1 at Z=3.5px */}
+          <div
+            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-800`}
+            style={{
+              background: "#171821",
+              transform: "translateZ(3.5px)",
+            }}
+          />
+          {/* Extrusion slice 2 at Z=7px */}
+          <div
+            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-700/60`}
+            style={{
+              background: "#1d1f2a",
+              transform: "translateZ(7px)",
+            }}
+          />
+          {/* Extrusion slice 3 at Z=10.5px */}
+          <div
+            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-700/75`}
+            style={{
+              background: "#222533",
+              transform: "translateZ(10.5px)",
+            }}
+          />
+          {/* Extrusion slice 4 at Z=14px */}
+          <div
+            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-600/70`}
+            style={{
+              background: "#282b3a",
+              transform: "translateZ(14px)",
+            }}
+          />
+        </>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          3. 3D BRICK TOP DECK (Resting at Z=16px)
          ───────────────────────────────────────────────────────────── */}
       <div
-        ref={cardRef}
-        onMouseMove={handlers.onMouseMove}
-        onMouseLeave={handlers.onMouseLeave}
-        className={`group relative min-w-[215px] cursor-pointer ${activeShapeClass} transition-all duration-200 border-[1.5px] ${
-          selected ? theme.borderSelected : "border-zinc-600/70 hover:border-zinc-400"
+        className={`group relative min-w-[215px] ${activeShapeClass} transition-all duration-200 border-[1.5px] ${
+          selected ? theme.borderSelected : "border-zinc-500/80 hover:border-zinc-300"
         }`}
         style={{
           background:
-            "linear-gradient(150deg, #2b2d37 0%, #202129 55%, #15161e 100%)",
+            "linear-gradient(150deg, #2d303f 0%, #222430 55%, #181922 100%)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           transformStyle: "preserve-3d",
-          transform: is2D
-            ? "none"
-            : tilt.isHovered
-            ? `translateY(-6px) translateZ(${activeElevation}px) rotateX(${tilt.x * 0.7}deg) rotateY(${tilt.y * 0.7}deg)`
-            : selected
-            ? `translateY(-2px) translateZ(${activeElevation}px)`
-            : `translateY(0px) translateZ(${activeElevation}px)`,
+          transform: is2D ? "none" : "translateZ(16px)",
           boxShadow: is2D
             ? selected
               ? `0 0 0 2px ${theme.accent}, 0 4px 14px rgba(0, 0, 0, 0.7), 0 0 16px ${theme.floorGlow}`
               : "0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 18px rgba(0, 0, 0, 0.45)"
             : `
               /* Top micro-chamfer specular highlight */
-              inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.4),
+              inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.45),
               /* Bottom inner bevel depth */
               inset 0 -2px 4px 0 rgba(0, 0, 0, 0.7),
-              /* Solid 4px machined slab sidewall bevels */
-              0 1px 0 0 #464856,
-              0 2px 0 0 #363844,
-              0 3px 0 0 #272832,
-              0 4px 0 0 #1b1c23,
-              /* Floating ambient drop shadow */
-              0 8px 22px -2px rgba(0, 0, 0, 0.7),
-              0 16px 36px -4px rgba(0, 0, 0, 0.55),
-              0 0 16px ${theme.floorGlow}
+              /* Top rim catch line */
+              0 1px 0 0 rgba(255, 255, 255, 0.15)
             `,
         }}
       >
