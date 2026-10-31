@@ -11,6 +11,7 @@ import {
   Settings,
   ChevronDown,
   Box,
+  Share2,
   Sparkles
 } from "lucide-react";
 import { SignInButton, SignUpButton, Show, UserButton, useUser } from "@clerk/nextjs";
@@ -116,7 +117,8 @@ export default function Sidebar({
   onOpenSearch,
   token,
   onUpdateStyleConfig,
-  isGuest
+  isGuest,
+  onShareSession
 }) {
   const { user } = useUser();
   const { 
@@ -238,6 +240,15 @@ export default function Sidebar({
                   <Pin size={14} />
                 )}
               </button>
+              {onShareSession && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onShareSession(session); }}
+                  className="p-1.5 rounded-md hover:bg-zinc-700/50 text-zinc-500 hover:text-blue-400 cursor-pointer transition-colors"
+                  title="Share Mind Map"
+                >
+                  <Share2 size={14} />
+                </button>
+              )}
               <button
                 onClick={(e) => startEditing(e, session)}
                 className="p-1.5 rounded-md hover:bg-zinc-700/50 text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"

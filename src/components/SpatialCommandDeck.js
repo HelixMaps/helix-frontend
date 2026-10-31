@@ -13,6 +13,7 @@ import {
   ZoomIn, 
   ZoomOut, 
   Wand2,
+  Share2,
   ChevronDown
 } from "lucide-react";
 import { useMapConfig } from "@/context/MapConfigContext";
@@ -28,7 +29,7 @@ import { layoutNodesHierarchical } from "@/utils/autoLayout";
  * - 3D View Mode Switcher: 3D Matrix, Isometric, Clean Studio
  * - Camera controls: Fit View, Zoom +, Zoom -
  */
-export default function SpatialCommandDeck({ onAddNode }) {
+export default function SpatialCommandDeck({ onAddNode, onShare }) {
   const { viewMode, changeViewMode } = useMapConfig();
   const { getNodes, getEdges, setNodes, fitView, zoomIn, zoomOut } = useReactFlow();
   const [isOrganizing, setIsOrganizing] = useState(false);
@@ -102,6 +103,18 @@ export default function SpatialCommandDeck({ onAddNode }) {
           <Wand2 size={13} className={`text-indigo-400 ${isOrganizing ? "animate-spin" : ""}`} />
           <span className="hidden md:inline">Organize</span>
         </button>
+
+        {/* Futuristic Share Button */}
+        {onShare && (
+          <button
+            onClick={onShare}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/35 border border-blue-500/40 text-blue-300 hover:text-white text-xs font-semibold cursor-pointer active:scale-95 transition-all shadow-[0_0_12px_rgba(59,130,246,0.25)]"
+            title="Share this Mind Map (Generate universal link)"
+          >
+            <Share2 size={13} className="text-blue-400" />
+            <span className="hidden md:inline">Share</span>
+          </button>
+        )}
 
         {/* Spatial 3D / 2D Canvas Mode Segmented Pill */}
         <div className="flex items-center gap-0.5 bg-zinc-800/80 p-0.5 rounded-xl border border-zinc-700/60">

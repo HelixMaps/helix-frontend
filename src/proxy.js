@@ -8,6 +8,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 const isPublicRoute = createRouteMatcher([
   "/",               // landing page
   "/dashboard(.*)", // workspace (guest access allowed)
+  "/share(.*)",     // public shared mind maps
   "/sign-in(.*)",   // clerk sign-in
   "/sign-up(.*)",   // clerk sign-up
   "/sitemap.xml",    // sitemap

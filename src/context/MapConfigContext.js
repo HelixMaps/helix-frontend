@@ -8,8 +8,8 @@ export const MapConfigProvider = ({ children }) => {
   const [nodeShape, setNodeShape] = useState("rounded");
   const [edgeStyle, setEdgeStyle] = useState("bezier"); // bezier, straight, step, smoothstep
 
-  // View Mode: "3d" (Infinite 3D Space) or "2d" (Dotted Canvas)
-  const [viewMode, setViewMode] = useState("3d");
+  // View Mode: "2d" (Dotted Canvas Grid) by default, or "3d" (Infinite 3D Space)
+  const [viewMode, setViewMode] = useState("2d");
   const [canvasPitch, setCanvasPitch] = useState(20);
   const [canvasYaw, setCanvasYaw] = useState(-4);
   const [shadowIntensity, setShadowIntensity] = useState("sleek");

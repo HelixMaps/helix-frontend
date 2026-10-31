@@ -6,6 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import SearchModal from "@/components/SearchModal";
+import ShareModal from "@/components/ShareModal";
 import FlowCanvas from "@/components/FlowCanvas";
 import { fetchProjects, createMap, updateMap, deleteMap } from "@/service/mapService";
 
@@ -21,6 +22,8 @@ function DashboardContent() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareTargetMap, setShareTargetMap] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // 1. Redirect to Sign In if signed out and not guest
@@ -330,6 +333,10 @@ function DashboardContent() {
           token={null} /* Deprecated, getToken is used dynamically */
           onUpdateStyleConfig={handleUpdateStyleConfig}
           isGuest={isGuest}
+          onShareSession={(s) => {
+            setShareTargetMap(s);
+            setIsShareModalOpen(true);
+          }}
         />
       </div>
 
@@ -351,6 +358,11 @@ function DashboardContent() {
             isGuest={isGuest}
             sessions={sessions}
             setSessions={setSessions}
+            onShare={() => {
+              const active = sessions.find((s) => s._id === activeSessionId) || sessions[0];
+              setShareTargetMap(active);
+              setIsShareModalOpen(true);
+            }}
           />
         )}
       </main>
@@ -361,6 +373,13 @@ function DashboardContent() {
         onClose={() => setIsSearchOpen(false)}
         sessions={sessions}
         onSelectSession={handleSelectSession}
+      />
+
+      {/* ── 5. Share Mind Map Modal ── */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        activeMap={shareTargetMap || sessions.find((s) => s._id === activeSessionId) || sessions[0]}
       />
 
       {/* ── 5. Delete Confirmation Modal ── */}

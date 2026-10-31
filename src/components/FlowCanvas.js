@@ -44,7 +44,7 @@ const edgeTypes = {
   smoothstep: ThreeDimensionalEdge,
 };
 
-function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSessions }) {
+function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSessions, onShare }) {
   const {
     edgeStyle,
     changeNodeShape,
@@ -487,7 +487,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
       />
 
       {/* ── Spatial Command Deck (Centered bottom HUD) ── */}
-      <SpatialCommandDeck onAddNode={addNodeAtCenter} />
+      <SpatialCommandDeck onAddNode={addNodeAtCenter} onShare={onShare} />
 
       {/* ── 3D Transformed Canvas Stage (Seamless Boundless Grey Space) ── */}
       <div
@@ -599,7 +599,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   );
 }
 
-export default function FlowCanvas({ activeSessionId, getToken, isGuest, sessions, setSessions }) {
+export default function FlowCanvas({ activeSessionId, getToken, isGuest, sessions, setSessions, onShare }) {
   return (
     <ReactFlowProvider>
       <FlowCanvasInner
@@ -608,6 +608,7 @@ export default function FlowCanvas({ activeSessionId, getToken, isGuest, session
         isGuest={isGuest}
         sessions={sessions}
         setSessions={setSessions}
+        onShare={onShare}
       />
     </ReactFlowProvider>
   );
