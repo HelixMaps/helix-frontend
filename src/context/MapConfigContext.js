@@ -8,11 +8,11 @@ export const MapConfigProvider = ({ children }) => {
   const [nodeShape, setNodeShape] = useState("rounded");
   const [edgeStyle, setEdgeStyle] = useState("bezier"); // bezier, straight, step, smoothstep
 
-  // 3D Visual and Spatial Perspective Configuration
-  const [viewMode, setViewMode] = useState("3d-perspective"); // "3d-perspective", "3d-isometric", "3d-topdown"
-  const [canvasPitch, setCanvasPitch] = useState(20); // Degrees of X tilt
-  const [canvasYaw, setCanvasYaw] = useState(-4); // Degrees of Z rotation
-  const [shadowIntensity, setShadowIntensity] = useState("sleek"); // "ultra", "sleek", "subtle"
+  // View Mode: "3d" (Infinite 3D Space) or "2d" (Dotted Canvas)
+  const [viewMode, setViewMode] = useState("3d");
+  const [canvasPitch, setCanvasPitch] = useState(20);
+  const [canvasYaw, setCanvasYaw] = useState(-4);
+  const [shadowIntensity, setShadowIntensity] = useState("sleek");
   const [enableParallax, setEnableParallax] = useState(true);
 
   useEffect(() => {
@@ -24,7 +24,9 @@ export const MapConfigProvider = ({ children }) => {
       if (savedEdge) setEdgeStyle(savedEdge);
 
       const savedViewMode = localStorage.getItem("helix-view-mode");
-      if (savedViewMode) setViewMode(savedViewMode);
+      if (savedViewMode) {
+        setViewMode(savedViewMode === "2d" || savedViewMode === "3d-topdown" ? "2d" : "3d");
+      }
 
       const savedPitch = localStorage.getItem("helix-canvas-pitch");
       if (savedPitch) setCanvasPitch(Number(savedPitch));
@@ -55,18 +57,15 @@ export const MapConfigProvider = ({ children }) => {
   };
 
   const changeViewMode = (mode) => {
-    setViewMode(mode);
+    const normalized = mode === "2d" || mode === "3d-topdown" ? "2d" : "3d";
+    setViewMode(normalized);
     if (typeof window !== "undefined") {
-      localStorage.setItem("helix-view-mode", mode);
+      localStorage.setItem("helix-view-mode", normalized);
     }
-    // Set matching default pitch and yaw for mode
-    if (mode === "3d-perspective") {
+    if (normalized === "3d") {
       setCanvasPitch(20);
       setCanvasYaw(-4);
-    } else if (mode === "3d-isometric") {
-      setCanvasPitch(35);
-      setCanvasYaw(-18);
-    } else if (mode === "3d-topdown") {
+    } else {
       setCanvasPitch(0);
       setCanvasYaw(0);
     }

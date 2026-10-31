@@ -51,11 +51,6 @@ export default function SpatialCommandDeck({ onAddNode }) {
     fitView({ padding: 0.35, duration: 600 });
   };
 
-  const modes = [
-    { id: "3d-perspective", label: "3D Orbit", icon: Box, tooltip: "3D Perspective View" },
-    { id: "3d-isometric", label: "Isometric", icon: Grid, tooltip: "3D Isometric Grid" },
-    { id: "3d-topdown", label: "Studio 2D", icon: Eye, tooltip: "Clean Top-Down Studio" },
-  ];
 
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 select-none pointer-events-auto">
@@ -108,27 +103,33 @@ export default function SpatialCommandDeck({ onAddNode }) {
           <span className="hidden md:inline">Organize</span>
         </button>
 
-        {/* Spatial 3D View Mode Segmented Pill */}
+        {/* Spatial 3D / 2D Canvas Mode Segmented Pill */}
         <div className="flex items-center gap-0.5 bg-zinc-900/80 p-0.5 rounded-xl border border-zinc-800/80">
-          {modes.map((m) => {
-            const Icon = m.icon;
-            const isActive = viewMode === m.id;
-            return (
-              <button
-                key={m.id}
-                onClick={() => changeViewMode(m.id)}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                  isActive
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_2px_8px_rgba(59,130,246,0.5),inset_0_1px_0_rgba(255,255,255,0.3)]"
-                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
-                }`}
-                title={m.tooltip}
-              >
-                <Icon size={12} className={isActive ? "text-white" : "text-zinc-400"} />
-                <span className="hidden lg:inline">{m.label}</span>
-              </button>
-            );
-          })}
+          <button
+            onClick={() => changeViewMode("3d")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+              viewMode === "3d" || viewMode === "3d-perspective"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_2px_8px_rgba(59,130,246,0.5),inset_0_1px_0_rgba(255,255,255,0.3)]"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+            }`}
+            title="Infinite 3D Spatial View (Boundless space)"
+          >
+            <Box size={13} className={viewMode === "3d" || viewMode === "3d-perspective" ? "text-white" : "text-zinc-400"} />
+            <span>3D Spatial</span>
+          </button>
+
+          <button
+            onClick={() => changeViewMode("2d")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+              viewMode === "2d" || viewMode === "3d-topdown"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_2px_8px_rgba(59,130,246,0.5),inset_0_1px_0_rgba(255,255,255,0.3)]"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+            }`}
+            title="2D Dotted Canvas Grid"
+          >
+            <Eye size={13} className={viewMode === "2d" || viewMode === "3d-topdown" ? "text-white" : "text-zinc-400"} />
+            <span>2D Canvas</span>
+          </button>
         </div>
 
         {/* Camera Navigation: Zoom & Fit */}

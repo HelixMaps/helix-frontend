@@ -428,13 +428,10 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     type: "threeDimensional",
   }));
 
-  // Calculate 3D perspective pitch and yaw
-  const isPerspective = viewMode === "3d-perspective";
-  const isIsometric = viewMode === "3d-isometric";
-  const isTopDown = viewMode === "3d-topdown";
-
-  const effectivePitch = isTopDown ? 0 : Math.max(0, canvasPitch + mouseParallax.pitch);
-  const effectiveYaw = isTopDown ? 0 : canvasYaw + mouseParallax.yaw;
+  // Calculate 3D perspective pitch and yaw: 3D Spatial vs 2D Canvas
+  const is3D = viewMode === "3d" || viewMode === "3d-perspective";
+  const effectivePitch = is3D ? Math.max(0, canvasPitch + mouseParallax.pitch) : 0;
+  const effectiveYaw = is3D ? canvasYaw + mouseParallax.yaw : 0;
 
   if (isLoadingCanvas) {
     return (
@@ -442,7 +439,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 rounded-full border-2 border-zinc-800 border-t-blue-500 animate-spin shadow-[0_0_12px_rgba(59,130,246,0.5)]" />
           <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider font-mono">
-            Initializing 3D Workspace...
+            Initializing Workspace...
           </span>
         </div>
       </div>
@@ -455,20 +452,26 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
       onMouseMove={handleCanvasMouseMove}
       className="relative w-full h-full bg-[#05070f] text-zinc-100 select-none overflow-hidden font-sans"
       style={{
-        perspective: isPerspective ? "1300px" : isIsometric ? "2200px" : "none",
-        perspectiveOrigin: "50% 38%",
+        perspective: is3D ? "1400px" : "none",
+        perspectiveOrigin: "50% 40%",
       }}
     >
-      {/* ── Spatial 3D Cosmic Grid & Starfield Environment ── */}
+      {/* ── Spatial 3D Starfield Environment in 3D Mode ── */}
       <Spatial3DEnvironment pitch={effectivePitch} yaw={effectiveYaw} />
 
-      {/* ── Minimalist 3D Watermark ── */}
+      {/* ── Minimalist Mode Badge ── */}
       <div className="absolute top-5 left-16 z-20 pointer-events-none select-none flex items-center gap-2">
         <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.22em] font-mono">
-          Helix Workspace // Spatial Matrix
+          Helix Workspace
         </span>
-        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_8px_rgba(59,130,246,0.3)]">
-          3D VIEW
+        <span
+          className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold border transition-colors ${
+            is3D
+              ? "bg-blue-500/10 text-blue-400 border-blue-500/30 shadow-[0_0_8px_rgba(59,130,246,0.3)]"
+              : "bg-zinc-800/80 text-zinc-400 border-zinc-700/60"
+          }`}
+        >
+          {is3D ? "3D SPATIAL" : "2D CANVAS"}
         </span>
       </div>
 
@@ -493,9 +496,9 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         className="w-full h-full origin-center transition-transform duration-500 ease-out"
         style={{
           transformStyle: "preserve-3d",
-          transform: isTopDown
-            ? "none"
-            : `rotateX(${effectivePitch}deg) rotateZ(${effectiveYaw}deg) scale(0.96)`,
+          transform: is3D
+            ? `rotateX(${effectivePitch}deg) rotateZ(${effectiveYaw}deg) scale(0.96)`
+            : "none",
         }}
       >
         <ReactFlow
@@ -517,8 +520,10 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           onMoveStart={onMoveStart}
           onNodeDoubleClick={onNodeDoubleClick}
         >
-          {/* Spatial 3D dot grid background */}
-          <Background variant="dots" gap={26} size={1.6} color="#27272a" />
+          {/* Dotted canvas background rendered ONLY in 2D mode */}
+          {!is3D && (
+            <Background variant="dots" gap={24} size={1.5} color="#27272a" />
+          )}
 
 
           {/* 3D Holographic MiniMap */}

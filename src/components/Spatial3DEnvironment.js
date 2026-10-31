@@ -5,17 +5,19 @@ import { useMapConfig } from "@/context/MapConfigContext";
 
 /**
  * Spatial3DEnvironment
- * Renders a high-performance spatial 3D background featuring:
- * 1. An infinite perspective wireframe grid floor receding into a cyber horizon
- * 2. An atmospheric particle starfield with depth parallax that responds to camera rotation
- * 3. Volumetric top lighting spotlight and horizon depth fog
+ * Renders an unbounded infinite space environment for 3D mode:
+ * - Floating cyber starfield particles with camera depth parallax
+ * - Volumetric overhead ambient lighting
+ * - Zero artificial floor bounding box
  */
 export default function Spatial3DEnvironment({ pitch = 20, yaw = -4 }) {
   const canvasRef = useRef(null);
   const { viewMode } = useMapConfig();
-  const isTopDown = viewMode === "3d-topdown";
+  const is3D = viewMode === "3d" || viewMode === "3d-perspective";
 
   useEffect(() => {
+    if (!is3D) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -32,17 +34,17 @@ export default function Spatial3DEnvironment({ pitch = 20, yaw = -4 }) {
 
     window.addEventListener("resize", handleResize);
 
-    // Generate 3D spatial particles
-    const particleCount = 65;
+    // Drifting starfield particles in infinite space
+    const particleCount = 75;
     const particles = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      z: Math.random() * 800 + 100, // Depth from camera
-      radius: Math.random() * 1.5 + 0.6,
-      baseAlpha: Math.random() * 0.5 + 0.2,
-      speedX: (Math.random() - 0.5) * 0.3,
-      speedY: (Math.random() - 0.5) * 0.3,
-      color: Math.random() > 0.4 ? "#60a5fa" : Math.random() > 0.5 ? "#34d399" : "#fbbf24",
+      z: Math.random() * 900 + 100,
+      radius: Math.random() * 1.6 + 0.6,
+      baseAlpha: Math.random() * 0.5 + 0.25,
+      speedX: (Math.random() - 0.5) * 0.25,
+      speedY: (Math.random() - 0.5) * 0.25,
+      color: Math.random() > 0.4 ? "#60a5fa" : Math.random() > 0.5 ? "#34d399" : "#a78bfa",
     }));
 
     let time = 0;
@@ -51,36 +53,32 @@ export default function Spatial3DEnvironment({ pitch = 20, yaw = -4 }) {
       time += 0.01;
       ctx.clearRect(0, 0, width, height);
 
-      // Parallax shift based on camera yaw & pitch
-      const parallaxX = (yaw / 45) * 40;
-      const parallaxY = (pitch / 45) * 30;
+      const parallaxX = (yaw / 45) * 35;
+      const parallaxY = (pitch / 45) * 25;
 
-      // Render floating cyber particles with depth scale
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.x += p.speedX;
         p.y += p.speedY;
 
-        // Wrap around bounds
         if (p.x < 0) p.x = width;
         if (p.x > width) p.x = 0;
         if (p.y < 0) p.y = height;
         if (p.y > height) p.y = 0;
 
-        // Scale and opacity inversely proportional to depth
-        const depthScale = 400 / p.z;
+        const depthScale = 450 / p.z;
         const currentRadius = p.radius * depthScale;
-        const pulse = Math.sin(time + i) * 0.2 + 0.8;
-        const alpha = Math.min(1, Math.max(0, p.baseAlpha * pulse * (1 - p.z / 1000)));
+        const pulse = Math.sin(time + i * 0.5) * 0.25 + 0.75;
+        const alpha = Math.min(1, Math.max(0, p.baseAlpha * pulse * (1 - p.z / 1100)));
 
-        const drawX = p.x + parallaxX * (1 - p.z / 1000);
-        const drawY = p.y + parallaxY * (1 - p.z / 1000);
+        const drawX = p.x + parallaxX * (1 - p.z / 1100);
+        const drawY = p.y + parallaxY * (1 - p.z / 1100);
 
         ctx.beginPath();
         ctx.arc(drawX, drawY, Math.max(0.6, currentRadius), 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.globalAlpha = alpha;
-        ctx.shadowBlur = 6 * depthScale;
+        ctx.shadowBlur = 8 * depthScale;
         ctx.shadowColor = p.color;
         ctx.fill();
       }
@@ -97,60 +95,39 @@ export default function Spatial3DEnvironment({ pitch = 20, yaw = -4 }) {
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [pitch, yaw]);
+  }, [pitch, yaw, is3D]);
+
+  if (!is3D) return null;
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden z-0 select-none">
-      {/* ── Deep Cyber Spatial Background Gradient ── */}
+      {/* ── Infinite Cosmic Radial Background Gradient ── */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 90% 65% at 50% 10%, rgba(30, 58, 138, 0.18) 0%, rgba(15, 23, 42, 0.45) 45%, #05070f 85%)",
+            "radial-gradient(ellipse 90% 70% at 50% 20%, rgba(30, 58, 138, 0.2) 0%, rgba(15, 23, 42, 0.5) 45%, #05070f 85%)",
         }}
       />
 
-      {/* ── 3D Horizon Grid Lines (Floor Plane) ── */}
-      {!isTopDown && (
-        <div
-          className="absolute inset-x-0 bottom-0 h-[65%] opacity-35"
-          style={{
-            backgroundImage: `
-              linear-gradient(to top, rgba(59, 130, 246, 0.25) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(59, 130, 246, 0.15) 1px, transparent 1px)
-            `,
-            backgroundSize: "60px 40px",
-            transformOrigin: "bottom center",
-            transform: `perspective(600px) rotateX(${Math.max(25, pitch)}deg)`,
-            maskImage: "linear-gradient(to top, black 25%, transparent 95%)",
-            WebkitMaskImage: "linear-gradient(to top, black 25%, transparent 95%)",
-          }}
-        />
-      )}
+      {/* ── Parallax Starfield Canvas (Boundless Space) ── */}
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full opacity-70" />
 
-      {/* ── Animated Cyber Particle Starfield Canvas ── */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full opacity-60" />
-
-      {/* ── Volumetric Overhead Conical Spotlight ── */}
+      {/* ── Volumetric Overhead Spotlight ── */}
       <div
-        className="absolute -top-32 left-1/2 -translate-x-1/2 w-[900px] h-[650px] rounded-full opacity-70 blur-[90px]"
+        className="absolute -top-32 left-1/2 -translate-x-1/2 w-[950px] h-[700px] rounded-full opacity-70 blur-[100px]"
         style={{
           background:
-            "radial-gradient(circle, rgba(59, 130, 246, 0.22) 0%, rgba(99, 102, 241, 0.1) 40%, transparent 75%)",
+            "radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(99, 102, 241, 0.1) 40%, transparent 75%)",
         }}
       />
 
-      {/* ── Vanishing Horizon Glow Line ── */}
-      {!isTopDown && (
-        <div className="absolute top-[28%] inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-blue-500/40 to-transparent blur-[1px] opacity-75" />
-      )}
-
-      {/* ── Deep Vignette Edges ── */}
+      {/* ── Deep Vignette ── */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at 50% 50%, transparent 55%, rgba(3, 7, 18, 0.75) 100%)",
+            "radial-gradient(circle at 50% 50%, transparent 55%, rgba(3, 7, 18, 0.8) 100%)",
         }}
       />
     </div>

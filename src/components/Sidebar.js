@@ -398,40 +398,29 @@ export default function Sidebar({
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">3D Spatial View</label>
                 <span className="text-[8px] font-mono font-bold bg-blue-500/10 text-blue-400 px-1 py-0.5 rounded border border-blue-500/20">3D</span>
               </div>
-              <div className="grid grid-cols-3 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800/80">
+              <div className="grid grid-cols-2 gap-1.5 bg-zinc-950 p-1 rounded-lg border border-zinc-800/80">
                 <button
-                  onClick={() => changeViewMode("3d-perspective")}
-                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                    viewMode === "3d-perspective"
+                  onClick={() => changeViewMode("3d")}
+                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    viewMode === "3d" || viewMode === "3d-perspective"
                       ? "bg-blue-600 text-white shadow-sm"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}
-                  title="3D Perspective with horizon vanishing point"
+                  title="3D Spatial: Infinite space without boundaries"
                 >
-                  <Box size={11} />
-                  <span>Orbit</span>
+                  <Box size={12} />
+                  <span>3D Spatial</span>
                 </button>
                 <button
-                  onClick={() => changeViewMode("3d-isometric")}
-                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                    viewMode === "3d-isometric"
+                  onClick={() => changeViewMode("2d")}
+                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    viewMode === "2d" || viewMode === "3d-topdown"
                       ? "bg-blue-600 text-white shadow-sm"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}
-                  title="3D Isometric angle"
+                  title="2D Canvas: Classic dotted canvas grid"
                 >
-                  <span>Iso</span>
-                </button>
-                <button
-                  onClick={() => changeViewMode("3d-topdown")}
-                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                    viewMode === "3d-topdown"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "text-zinc-500 hover:text-zinc-300"
-                  }`}
-                  title="Top-down 3D studio with extruded nodes & shadows"
-                >
-                  <span>Studio</span>
+                  <span>2D Canvas</span>
                 </button>
               </div>
             </div>
