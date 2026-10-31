@@ -434,10 +434,10 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
 
   if (isLoadingCanvas) {
     return (
-      <div className="relative w-full h-full bg-zinc-950 flex items-center justify-center text-zinc-400 select-none overflow-hidden font-sans">
+      <div className="relative w-full h-full bg-[#1e1e24] flex items-center justify-center text-zinc-300 select-none overflow-hidden font-sans">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 rounded-full border-2 border-zinc-800 border-t-zinc-400 animate-spin" />
-          <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider font-mono">
+          <div className="w-6 h-6 rounded-full border-2 border-zinc-700 border-t-zinc-300 animate-spin" />
+          <span className="text-[10px] text-zinc-300 font-bold uppercase tracking-wider font-mono">
             Initializing Workspace...
           </span>
         </div>
@@ -449,22 +449,36 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     <div
       ref={canvasContainerRef}
       onMouseMove={handleCanvasMouseMove}
-      className="relative w-full h-full bg-zinc-950 text-zinc-100 select-none overflow-hidden font-sans"
+      className="relative w-full h-full text-zinc-100 select-none overflow-hidden font-sans transition-colors duration-500"
       style={{
         perspective: is3D ? "1400px" : "none",
         perspectiveOrigin: "50% 40%",
+        background: is3D
+          ? "radial-gradient(ellipse 95% 70% at 50% 30%, #2a2a32 0%, #1f1f26 45%, #17171d 80%, #121216 100%)"
+          : "#1c1c22",
       }}
     >
+      {/* ── Volumetric Studio Ambient Key Light (in 3D Mode) ── */}
+      {is3D && (
+        <div
+          className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[1100px] h-[750px] rounded-full opacity-60 blur-[110px]"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(210, 210, 225, 0.03) 50%, transparent 75%)",
+          }}
+        />
+      )}
+
       {/* ── Minimalist Mode Badge ── */}
       <div className="absolute top-5 left-16 z-20 pointer-events-none select-none flex items-center gap-2">
-        <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.22em] font-mono">
+        <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-[0.22em] font-mono">
           Helix Workspace
         </span>
         <span
           className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold border transition-colors ${
             is3D
-              ? "bg-zinc-800/90 text-zinc-200 border-zinc-700 shadow-sm"
-              : "bg-zinc-900/90 text-zinc-400 border-zinc-800"
+              ? "bg-zinc-800 text-zinc-100 border-zinc-600 shadow-sm"
+              : "bg-zinc-850 text-zinc-400 border-zinc-750"
           }`}
         >
           {is3D ? "3D SPATIAL" : "2D CANVAS"}
@@ -523,7 +537,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
               variant="dots"
               gap={24}
               size={1.5}
-              color="#27272a"
+              color="#4b4b55"
             />
           )}
 
