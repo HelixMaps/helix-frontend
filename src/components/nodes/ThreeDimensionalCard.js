@@ -54,10 +54,11 @@ export default function ThreeDimensionalCard({
       accent: "#3b82f6",
       accentLight: "#93c5fd",
       accentDark: "#1d4ed8",
-      floorGlow: "rgba(59, 130, 246, 0.35)",
-      floorGlowHover: "rgba(59, 130, 246, 0.65)",
+      floorGlow: "rgba(59, 130, 246, 0.4)",
+      floorGlowHover: "rgba(59, 130, 246, 0.7)",
       tagColor: "text-blue-400",
-      borderSelected: "border-blue-400 ring-2 ring-blue-500/30",
+      powerRail: "bg-blue-500",
+      borderSelected: "border-blue-400 ring-2 ring-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.35)]",
       borderResting: "border-zinc-700/80 hover:border-zinc-500",
       badgeGradient: "from-blue-500/25 via-blue-600/15 to-transparent",
       badgeBorder: "border-blue-400/40",
@@ -67,10 +68,11 @@ export default function ThreeDimensionalCard({
       accent: "#10b981",
       accentLight: "#6ee7b7",
       accentDark: "#047857",
-      floorGlow: "rgba(16, 185, 129, 0.35)",
-      floorGlowHover: "rgba(16, 185, 129, 0.65)",
+      floorGlow: "rgba(16, 185, 129, 0.4)",
+      floorGlowHover: "rgba(16, 185, 129, 0.7)",
       tagColor: "text-emerald-400",
-      borderSelected: "border-emerald-400 ring-2 ring-emerald-500/30",
+      powerRail: "bg-emerald-500",
+      borderSelected: "border-emerald-400 ring-2 ring-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.35)]",
       borderResting: "border-zinc-700/80 hover:border-zinc-500",
       badgeGradient: "from-emerald-500/25 via-emerald-600/15 to-transparent",
       badgeBorder: "border-emerald-400/40",
@@ -80,10 +82,11 @@ export default function ThreeDimensionalCard({
       accent: "#f59e0b",
       accentLight: "#fde68a",
       accentDark: "#b45309",
-      floorGlow: "rgba(245, 158, 11, 0.35)",
-      floorGlowHover: "rgba(245, 158, 11, 0.65)",
+      floorGlow: "rgba(245, 158, 11, 0.4)",
+      floorGlowHover: "rgba(245, 158, 11, 0.7)",
       tagColor: "text-amber-400",
-      borderSelected: "border-amber-400 ring-2 ring-amber-500/30",
+      powerRail: "bg-amber-500",
+      borderSelected: "border-amber-400 ring-2 ring-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.35)]",
       borderResting: "border-zinc-700/80 hover:border-zinc-500",
       badgeGradient: "from-amber-500/25 via-amber-600/15 to-transparent",
       badgeBorder: "border-amber-400/40",
@@ -145,130 +148,6 @@ export default function ThreeDimensionalCard({
     [id, type, theme.accent, setNodes, setEdges]
   );
 
-  // Box shadows with ambient floor glow - Multi-layer thick 3D brick / slab extrusion
-  const cardShadows = React.useMemo(() => {
-    if (is2D) {
-      if (selected) {
-        return `0 0 0 2px ${theme.accent}, 0 4px 14px rgba(0, 0, 0, 0.7), 0 0 16px ${theme.floorGlow}`;
-      }
-      return `0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 18px rgba(0, 0, 0, 0.45)`;
-    }
-
-    if (selected) {
-      return `
-        /* Top specular highlight & bevel */
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.5),
-        inset 0 -2px 4px 0 rgba(0, 0, 0, 0.8),
-        /* Colored illuminated rim */
-        0 1px 0 0 ${theme.accentLight},
-        0 2px 0 0 ${theme.accent},
-        0 3px 0 0 ${theme.accentDark},
-        /* Heavy 22px solid slab brick side walls */
-        0 4px 0 0 #3f3f46,
-        0 5px 0 0 #3a3a41,
-        0 6px 0 0 #36363d,
-        0 7px 0 0 #323238,
-        0 8px 0 0 #2e2e34,
-        0 9px 0 0 #2a2a30,
-        0 10px 0 0 #27272c,
-        0 11px 0 0 #232328,
-        0 12px 0 0 #202025,
-        0 13px 0 0 #1d1d22,
-        0 14px 0 0 #1a1a1f,
-        0 15px 0 0 #18181c,
-        0 16px 0 0 #151519,
-        0 17px 0 0 #131316,
-        0 18px 0 0 #111114,
-        0 19px 0 0 #0f0f12,
-        0 20px 0 0 #0d0d10,
-        0 21px 0 0 #0b0b0e,
-        0 22px 0 0 #08080a,
-        /* Ground contact occlusion shadow */
-        0 25px 2px -1px rgba(0, 0, 0, 0.95),
-        /* Floor drop shadow */
-        0 34px 44px -4px rgba(0, 0, 0, 0.9),
-        0 48px 70px -8px rgba(0, 0, 0, 0.8),
-        0 24px 40px -2px ${theme.floorGlowHover},
-        0 0 30px 4px ${theme.floorGlow}
-      `;
-    }
-
-    if (tilt.isHovered) {
-      return `
-        /* Top specular highlight */
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
-        inset 0 -2px 4px 0 rgba(0, 0, 0, 0.8),
-        /* Beveled top rim */
-        0 1px 0 0 #71717a,
-        0 2px 0 0 #52525b,
-        0 3px 0 0 #47474f,
-        /* Thick 26px elevated slab brick extrusion */
-        0 4px 0 0 #3f3f46,
-        0 5px 0 0 #3b3b42,
-        0 6px 0 0 #37373e,
-        0 7px 0 0 #34343a,
-        0 8px 0 0 #303036,
-        0 9px 0 0 #2d2d33,
-        0 10px 0 0 #2a2a30,
-        0 11px 0 0 #26262c,
-        0 12px 0 0 #232328,
-        0 13px 0 0 #202025,
-        0 14px 0 0 #1d1d22,
-        0 15px 0 0 #1b1b1f,
-        0 16px 0 0 #18181c,
-        0 17px 0 0 #16161a,
-        0 18px 0 0 #131317,
-        0 19px 0 0 #111115,
-        0 20px 0 0 #0f0f13,
-        0 21px 0 0 #0d0d10,
-        0 22px 0 0 #0b0b0e,
-        0 23px 0 0 #09090c,
-        0 24px 0 0 #07070a,
-        0 25px 0 0 #050508,
-        0 26px 0 0 #040406,
-        /* Heavy ground contact & floor shadow */
-        0 30px 3px -1px rgba(0, 0, 0, 0.95),
-        0 42px 55px -6px rgba(0, 0, 0, 0.9),
-        0 56px 85px -10px rgba(0, 0, 0, 0.8),
-        0 26px 45px -4px ${theme.floorGlowHover}
-      `;
-    }
-
-    return `
-      /* Resting top specular highlight & bevel */
-      inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
-      inset 0 -2px 4px 0 rgba(0, 0, 0, 0.8),
-      /* Beveled metallic top rim */
-      0 1px 0 0 #52525b,
-      0 2px 0 0 #3f3f46,
-      0 3px 0 0 #38383f,
-      /* 20px solid heavy slab brick side walls */
-      0 4px 0 0 #333339,
-      0 5px 0 0 #2e2e34,
-      0 6px 0 0 #2a2a30,
-      0 7px 0 0 #26262c,
-      0 8px 0 0 #232328,
-      0 9px 0 0 #202025,
-      0 10px 0 0 #1d1d22,
-      0 11px 0 0 #1a1a1f,
-      0 12px 0 0 #18181c,
-      0 13px 0 0 #151519,
-      0 14px 0 0 #131317,
-      0 15px 0 0 #111115,
-      0 16px 0 0 #0f0f13,
-      0 17px 0 0 #0d0d10,
-      0 18px 0 0 #0b0b0e,
-      0 19px 0 0 #09090c,
-      0 20px 0 0 #07070a,
-      /* Contact occlusion shadow */
-      0 23px 2px -1px rgba(0, 0, 0, 0.95),
-      /* Floor shadow */
-      0 30px 40px -4px rgba(0, 0, 0, 0.85),
-      0 44px 60px -8px rgba(0, 0, 0, 0.75),
-      0 18px 32px -4px ${theme.floorGlow}
-    `;
-  }, [selected, tilt.isHovered, theme, is2D]);
-
   return (
     <div
       className="relative select-none"
@@ -277,45 +156,85 @@ export default function ThreeDimensionalCard({
       }}
     >
       {/* ─────────────────────────────────────────────────────────────
-          1. 3D SOLID HEAVY BRICK / SLAB
+          1. CNC-MILLED BASE CHASSIS (Layer 1: Beveled Titanium Plate)
+         ───────────────────────────────────────────────────────────── */}
+      {!is2D && (
+        <div
+          className={`absolute -inset-1.5 rounded-[22px] pointer-events-none transition-all duration-300 border ${
+            selected
+              ? "border-zinc-500/80 shadow-[0_0_20px_rgba(255,255,255,0.08)]"
+              : "border-zinc-700/60"
+          }`}
+          style={{
+            background:
+              "linear-gradient(180deg, #2c2e39 0%, #1e2029 55%, #13141a 100%)",
+            transform: "translateZ(0px)",
+            boxShadow: selected
+              ? `0 14px 28px -4px rgba(0, 0, 0, 0.75), 0 0 20px 2px ${theme.floorGlow}`
+              : tilt.isHovered
+              ? "0 18px 36px -6px rgba(0, 0, 0, 0.8), 0 6px 14px rgba(0, 0, 0, 0.45)"
+              : "0 10px 22px -4px rgba(0, 0, 0, 0.7), 0 4px 8px rgba(0, 0, 0, 0.35)",
+          }}
+        >
+          {/* Precision Chamfer Bevel Catch Line */}
+          <div className="absolute top-0 left-3 right-3 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+          <div className="absolute bottom-0 left-3 right-3 h-[1px] bg-gradient-to-r from-transparent via-black/50 to-transparent" />
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          2. ELEVATED PRECISION TOP DECK (Layer 2: Machined Surface)
          ───────────────────────────────────────────────────────────── */}
       <div
         ref={cardRef}
         onMouseMove={handlers.onMouseMove}
         onMouseLeave={handlers.onMouseLeave}
-        className={`group relative min-w-[210px] cursor-pointer ${activeShapeClass} transition-all duration-300 ease-out border-[1.5px] ${
-          selected ? theme.borderSelected : `${theme.borderResting}`
+        className={`group relative min-w-[215px] cursor-pointer ${activeShapeClass} transition-all duration-200 border-[1.5px] ${
+          selected ? theme.borderSelected : "border-zinc-700/80 hover:border-zinc-500"
         }`}
         style={{
           background:
-            "linear-gradient(135deg, rgba(38, 38, 43, 0.98) 0%, rgba(26, 26, 30, 0.99) 50%, rgba(18, 18, 22, 1) 100%)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
-          boxShadow: cardShadows,
+            "linear-gradient(145deg, #242631 0%, #1c1d25 50%, #14151b 100%)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
           transformStyle: "preserve-3d",
           transform: is2D
             ? "none"
             : tilt.isHovered
-            ? `perspective(850px) translateY(-10px) translateZ(24px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(1.02)`
+            ? `translateY(-4px) translateZ(16px) rotateX(${tilt.x * 0.75}deg) rotateY(${tilt.y * 0.75}deg)`
             : selected
-            ? "perspective(850px) translateY(-6px) translateZ(16px) scale(1.01)"
-            : "perspective(850px) translateY(-2px) translateZ(8px) rotateX(0deg) rotateY(0deg) scale(1)",
+            ? "translateY(-2px) translateZ(12px)"
+            : "translateY(0px) translateZ(8px)",
+          boxShadow: is2D
+            ? selected
+              ? `0 0 0 2px ${theme.accent}, 0 4px 14px rgba(0, 0, 0, 0.7), 0 0 16px ${theme.floorGlow}`
+              : "0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 18px rgba(0, 0, 0, 0.45)"
+            : `
+              inset 0 1px 1px 0 rgba(255, 255, 255, 0.25),
+              inset 0 -1px 2px 0 rgba(0, 0, 0, 0.6),
+              0 4px 12px rgba(0, 0, 0, 0.5)
+            `,
         }}
       >
+        {/* Micro-chamfer Top Catch Line */}
+        <div className="pointer-events-none absolute top-0 left-3 right-3 h-[1.5px] bg-gradient-to-r from-transparent via-white/40 to-transparent z-10" />
+
+        {/* Illuminated Left Edge Power Rail */}
+        <div
+          className={`absolute left-0 top-3 bottom-3 w-[2.5px] rounded-r-full ${theme.powerRail} transition-all duration-300 z-10`}
+          style={{
+            boxShadow: `0 0 8px ${theme.accent}`,
+          }}
+        />
+
         {/* Dynamic Specular Sheen (Follows cursor) */}
         <div
           className="pointer-events-none absolute inset-0 rounded-[inherit] overflow-hidden transition-opacity duration-300 z-10"
           style={{
             opacity: tilt.isHovered ? 1 : 0,
-            background: `radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.05) 45%, transparent 75%)`,
+            background: `radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.04) 45%, transparent 70%)`,
           }}
         />
-
-        {/* Top Edge Specular Catch Line */}
-        <div className="pointer-events-none absolute top-0 left-3 right-3 h-[1.5px] bg-gradient-to-r from-transparent via-white/40 to-transparent z-10" />
-
-        {/* Bottom Rim Light Highlight */}
-        <div className="pointer-events-none absolute bottom-0 left-3 right-3 h-[1px] bg-gradient-to-r from-transparent via-zinc-600/30 to-transparent z-10" />
 
         {/* Target Connection Handles */}
         <ThreeDimensionalHandle
