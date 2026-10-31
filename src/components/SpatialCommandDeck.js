@@ -56,14 +56,14 @@ export default function SpatialCommandDeck({ onAddNode }) {
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 select-none pointer-events-auto">
       {/* ── UNIFIED SPATIAL COMMAND ISLAND ── */}
       <div
-        className="flex items-center gap-2 px-3 py-2 bg-slate-950/90 backdrop-blur-2xl border border-blue-900/50 rounded-2xl transition-all duration-300"
+        className="flex items-center gap-2 px-3 py-2 bg-zinc-900/95 backdrop-blur-2xl border border-zinc-700/80 rounded-2xl transition-all duration-300"
         style={{
           boxShadow:
-            "0 4px 0 0 #0f172a, 0 20px 48px -4px rgba(2,6,23,0.95), inset 0 1px 0 rgba(255,255,255,0.2)",
+            "0 4px 0 0 #18181b, 0 20px 48px -4px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.2)",
         }}
       >
         {/* Quick Node Spawners */}
-        <div className="flex items-center gap-1 pr-2 border-r border-blue-900/40">
+        <div className="flex items-center gap-1 pr-2 border-r border-zinc-800">
           <button
             onClick={() => onAddNode("idea")}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold cursor-pointer active:scale-95 transition-all shadow-sm"
@@ -96,7 +96,7 @@ export default function SpatialCommandDeck({ onAddNode }) {
         <button
           onClick={handleAutoLayout}
           disabled={isOrganizing}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-blue-900/40 text-blue-200 hover:text-white text-xs font-semibold cursor-pointer active:scale-95 transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800/90 hover:bg-zinc-700/80 border border-zinc-700/60 text-zinc-200 hover:text-white text-xs font-semibold cursor-pointer active:scale-95 transition-all"
           title="Auto-organize nodes into clean hierarchical layout"
         >
           <Wand2 size={13} className={`text-indigo-400 ${isOrganizing ? "animate-spin" : ""}`} />
@@ -104,17 +104,17 @@ export default function SpatialCommandDeck({ onAddNode }) {
         </button>
 
         {/* Spatial 3D / 2D Canvas Mode Segmented Pill */}
-        <div className="flex items-center gap-0.5 bg-slate-900/80 p-0.5 rounded-xl border border-blue-900/40">
+        <div className="flex items-center gap-0.5 bg-zinc-800/80 p-0.5 rounded-xl border border-zinc-700/60">
           <button
             onClick={() => changeViewMode("3d")}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
               viewMode === "3d" || viewMode === "3d-perspective"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_2px_8px_rgba(59,130,246,0.5),inset_0_1px_0_rgba(255,255,255,0.3)]"
-                : "text-slate-400 hover:text-blue-200 hover:bg-slate-800/50"
+                ? "bg-zinc-700 text-white shadow-sm border border-zinc-600"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50"
             }`}
-            title="Infinite 3D Spatial View (Boundless space)"
+            title="3D Spatial Perspective View (Without Dots)"
           >
-            <Box size={13} className={viewMode === "3d" || viewMode === "3d-perspective" ? "text-white" : "text-blue-400"} />
+            <Box size={13} className={viewMode === "3d" || viewMode === "3d-perspective" ? "text-white" : "text-zinc-400"} />
             <span>3D Spatial</span>
           </button>
 
@@ -122,18 +122,18 @@ export default function SpatialCommandDeck({ onAddNode }) {
             onClick={() => changeViewMode("2d")}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
               viewMode === "2d" || viewMode === "3d-topdown"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_2px_8px_rgba(59,130,246,0.5),inset_0_1px_0_rgba(255,255,255,0.3)]"
-                : "text-slate-400 hover:text-blue-200 hover:bg-slate-800/50"
+                ? "bg-zinc-700 text-white shadow-sm border border-zinc-600"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50"
             }`}
             title="2D Dotted Canvas Grid"
           >
-            <Eye size={13} className={viewMode === "2d" || viewMode === "3d-topdown" ? "text-white" : "text-blue-400"} />
+            <Eye size={13} className={viewMode === "2d" || viewMode === "3d-topdown" ? "text-white" : "text-zinc-400"} />
             <span>2D Canvas</span>
           </button>
         </div>
 
         {/* Camera Navigation: Zoom & Fit */}
-        <div className="flex items-center border-l border-blue-900/40 pl-2 gap-0.5">
+        <div className="flex items-center border-l border-zinc-800 pl-2 gap-0.5">
           <button
             onClick={() => zoomIn({ duration: 300 })}
             className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 cursor-pointer transition-colors"

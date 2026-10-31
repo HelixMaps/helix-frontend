@@ -64,7 +64,7 @@ export default function ThreeDimensionalEdge({
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#93c5fd" />
           <stop offset="45%" stopColor={strokeColor} />
-          <stop offset="100%" stopColor="#1e3a8a" />
+          <stop offset="100%" stopColor="#18181b" />
         </linearGradient>
 
         {/* Ambient Blur Filter for Floor Shadow */}
@@ -73,14 +73,14 @@ export default function ThreeDimensionalEdge({
         </filter>
       </defs>
 
-      {/* 1. Deep Space Ambient Depth Shadow */}
+      {/* 1. Floor Drop Shadow onto Canvas */}
       <path
         d={edgePath}
         fill="none"
-        stroke="rgba(2, 7, 24, 0.8)"
+        stroke="rgba(0, 0, 0, 0.75)"
         strokeWidth={selected ? 7 : 5}
         strokeLinecap="round"
-        transform="translate(0, 8)"
+        transform="translate(0, 10)"
         filter={`url(#${filterId})`}
         className="pointer-events-none transition-all duration-300"
       />

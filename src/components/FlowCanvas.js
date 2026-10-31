@@ -19,7 +19,6 @@ import TaskNode from "./nodes/TaskNode";
 import ResourceNode from "./nodes/ResourceNode";
 import ThreeDimensionalEdge from "./edges/ThreeDimensionalEdge";
 import SpatialCommandDeck from "./SpatialCommandDeck";
-import Spatial3DEnvironment from "./Spatial3DEnvironment";
 import NodePicker from "./NodePicker";
 import ContextMenu from "./ContextMenu";
 import DetailsDrawer from "./DetailsDrawer";
@@ -435,10 +434,10 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
 
   if (isLoadingCanvas) {
     return (
-      <div className="relative w-full h-full bg-[#020718] flex items-center justify-center text-blue-400 select-none overflow-hidden font-sans">
+      <div className="relative w-full h-full bg-zinc-950 flex items-center justify-center text-zinc-400 select-none overflow-hidden font-sans">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 rounded-full border-2 border-blue-950 border-t-blue-500 animate-spin shadow-[0_0_12px_rgba(59,130,246,0.5)]" />
-          <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider font-mono">
+          <div className="w-6 h-6 rounded-full border-2 border-zinc-800 border-t-zinc-400 animate-spin" />
+          <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider font-mono">
             Initializing Workspace...
           </span>
         </div>
@@ -450,25 +449,22 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     <div
       ref={canvasContainerRef}
       onMouseMove={handleCanvasMouseMove}
-      className="relative w-full h-full bg-[#020718] text-zinc-100 select-none overflow-hidden font-sans"
+      className="relative w-full h-full bg-zinc-950 text-zinc-100 select-none overflow-hidden font-sans"
       style={{
         perspective: is3D ? "1400px" : "none",
         perspectiveOrigin: "50% 40%",
       }}
     >
-      {/* ── Spatial 3D Starfield Environment in 3D Mode ── */}
-      <Spatial3DEnvironment pitch={effectivePitch} yaw={effectiveYaw} />
-
       {/* ── Minimalist Mode Badge ── */}
       <div className="absolute top-5 left-16 z-20 pointer-events-none select-none flex items-center gap-2">
-        <span className="text-[9px] text-blue-400/80 font-bold uppercase tracking-[0.22em] font-mono">
+        <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.22em] font-mono">
           Helix Workspace
         </span>
         <span
           className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold border transition-colors ${
             is3D
-              ? "bg-blue-500/15 text-blue-300 border-blue-500/40 shadow-[0_0_8px_rgba(59,130,246,0.4)]"
-              : "bg-slate-850/80 text-slate-300 border-blue-900/60"
+              ? "bg-zinc-800/90 text-zinc-200 border-zinc-700 shadow-sm"
+              : "bg-zinc-900/90 text-zinc-400 border-zinc-800"
           }`}
         >
           {is3D ? "3D SPATIAL" : "2D CANVAS"}
@@ -491,7 +487,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
       {/* ── Spatial Command Deck (Centered bottom HUD) ── */}
       <SpatialCommandDeck onAddNode={addNodeAtCenter} />
 
-      {/* ── 3D Transformed Canvas Stage (Boundless Full-Bleed Space) ── */}
+      {/* ── 3D Transformed Canvas Stage (Seamless Boundless Grey Space) ── */}
       <div
         className="w-full h-full origin-center transition-transform duration-500 ease-out"
         style={{
@@ -521,43 +517,42 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           onMoveStart={onMoveStart}
           onNodeDoubleClick={onNodeDoubleClick}
         >
-          {/* Dotted canvas background rendered ONLY in 2D mode */}
+          {/* Dotted canvas background rendered ONLY in 2D mode; in 3D: pure grey without dots */}
           {!is3D && (
             <Background
               variant="dots"
               gap={24}
               size={1.5}
-              color="rgba(96, 165, 250, 0.28)"
-              className="bg-[#040a1c]"
+              color="#27272a"
             />
           )}
 
 
-          {/* 3D Holographic MiniMap */}
+          {/* 3D MiniMap */}
           {isMiniMapOpen ? (
             <>
               <MiniMap
-                width={170}
-                height={115}
-                className="!bg-slate-950/90 !backdrop-blur-md !border-blue-900/50 !rounded-xl !shadow-[0_16px_32px_rgba(2,6,23,0.9),inset_0_1px_0_rgba(255,255,255,0.15)]"
-                maskColor="rgba(2, 7, 24, 0.75)"
+                width={160}
+                height={110}
+                className="!bg-zinc-900/95 !backdrop-blur-md !border-zinc-800 !rounded-xl !shadow-2xl"
+                maskColor="rgba(9, 9, 11, 0.75)"
                 nodeColor={(node) => {
                   if (node.type === "idea") return "#1e3a8a";
                   if (node.type === "task") return "#065f46";
                   if (node.type === "resource") return "#78350f";
-                  return "#0f172a";
+                  return "#18181b";
                 }}
                 nodeStrokeWidth={1.5}
                 nodeStrokeColor={(node) => {
                   if (node.type === "idea") return "#60a5fa";
                   if (node.type === "task") return "#34d399";
                   if (node.type === "resource") return "#fbbf24";
-                  return "#3b82f6";
+                  return "#3f3f46";
                 }}
               />
               <button
                 onClick={() => setIsMiniMapOpen(false)}
-                className="absolute bottom-[140px] right-4 z-10 p-1.5 bg-slate-950/90 backdrop-blur-md border border-blue-900/50 rounded-lg hover:bg-blue-900/40 hover:text-white text-blue-300 shadow-xl transition-all cursor-pointer hover:border-blue-700 active:scale-95 flex items-center justify-center"
+                className="absolute bottom-[140px] right-4 z-10 p-1.5 bg-zinc-900/95 backdrop-blur-md border border-zinc-800 rounded-lg hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400 shadow-xl transition-all cursor-pointer hover:border-zinc-700 active:scale-95 flex items-center justify-center"
                 title="Minimize Map"
               >
                 <Minimize2 size={12} />
@@ -566,7 +561,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           ) : (
             <button
               onClick={() => setIsMiniMapOpen(true)}
-              className="absolute bottom-4 right-4 z-10 p-2.5 bg-slate-950/90 backdrop-blur-md border border-blue-900/50 rounded-lg hover:bg-blue-900/40 hover:text-white text-blue-300 shadow-xl transition-all cursor-pointer hover:border-blue-700 active:scale-95 flex items-center justify-center"
+              className="absolute bottom-4 right-4 z-10 p-2.5 bg-zinc-900/95 backdrop-blur-md border border-zinc-800 rounded-lg hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400 shadow-xl transition-all cursor-pointer hover:border-zinc-700 active:scale-95 flex items-center justify-center"
               title="Expand 3D MiniMap"
             >
               <Map size={15} />
