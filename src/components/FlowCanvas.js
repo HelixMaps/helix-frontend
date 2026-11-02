@@ -10,6 +10,7 @@ import {
   addEdge,
   ReactFlowProvider,
   useReactFlow,
+  useOnViewportChange,
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
@@ -432,6 +433,15 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   const effectivePitch = is3D ? Math.max(0, canvasPitch + mouseParallax.pitch) : 0;
   const effectiveYaw = is3D ? canvasYaw + mouseParallax.yaw : 0;
 
+  // Live synchronous viewport ref to avoid lag or stale state during high-frequency trackpad events
+  const activeViewportRef = useRef(null);
+
+  useOnViewportChange({
+    onChange: (viewport) => {
+      activeViewportRef.current = viewport;
+    },
+  });
+
   // Keep latest refs for 3D cursor-anchored zooming without event listener churn
   const latest3DRef = useRef({
     is3D,
@@ -451,30 +461,22 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     };
   });
 
-  // Precise cursor-anchored 3D zooming via ray-plane unprojection
+  // Precise cursor-anchored 3D zooming engine for mouse wheels and trackpad pinch / scroll
   useEffect(() => {
     const container = canvasContainerRef.current;
     if (!container) return;
 
-    const handleWheel = (e) => {
+    const apply3DZoom = (clientX, clientY, zoomFactor) => {
       const state = latest3DRef.current;
       if (!state.is3D) return;
-
-      // Don't intercept zooming if interacting with inputs, textareas, select, etc.
-      if (e.target.closest?.(".nowheel, input, textarea, select, button")) {
-        return;
-      }
-
-      e.preventDefault();
-      e.stopPropagation();
 
       const rect = container.getBoundingClientRect();
       const W = rect.width;
       const H = rect.height;
 
       // Cursor position relative to container's perspective center
-      const xs = e.clientX - (rect.left + W / 2);
-      const ys = e.clientY - (rect.top + H / 2);
+      const xs = clientX - (rect.left + W / 2);
+      const ys = clientY - (rect.top + H / 2);
 
       const D = 1400; // CSS perspective distance
       const S = 1.45; // 3D stage scale factor
@@ -501,23 +503,15 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
       const localX = u + W / 2;
       const localY = v + H / 2;
 
-      // Current viewport
-      const currentViewport = state.getViewport();
-      const currentZoom = currentViewport.zoom;
+      // Synchronous live viewport
+      const currentViewport = activeViewportRef.current || state.getViewport();
+      const currentZoom = currentViewport.zoom || 1;
 
-      // Normalize delta across browsers/devices
-      let delta = e.deltaY;
-      if (e.deltaMode === 1) delta *= 16;
-      else if (e.deltaMode === 2) delta *= 800;
-
-      // Smooth zoom multiplier
-      const zoomSensitivity = e.ctrlKey ? 0.01 : 0.0018;
-      const zoomFactor = Math.pow(2, -delta * zoomSensitivity);
       const minZoom = 0.05;
       const maxZoom = 4.0;
       const newZoom = Math.min(Math.max(currentZoom * zoomFactor, minZoom), maxZoom);
 
-      if (newZoom === currentZoom) return;
+      if (Math.abs(newZoom - currentZoom) < 0.0001) return;
 
       // Calculate graph coordinates under cursor
       const flowX = (localX - currentViewport.x) / currentZoom;
@@ -527,12 +521,78 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
       const newX = localX - flowX * newZoom;
       const newY = localY - flowY * newZoom;
 
+      // Instantly update live ref so successive rapid events read updated coordinates
+      activeViewportRef.current = { x: newX, y: newY, zoom: newZoom };
+
       state.setViewport({ x: newX, y: newY, zoom: newZoom }, { duration: 0 });
     };
 
-    container.addEventListener("wheel", handleWheel, { passive: false });
+    const handleWheel = (e) => {
+      const state = latest3DRef.current;
+      if (!state.is3D) return;
+
+      // Don't intercept zooming if interacting with inputs, textareas, select, etc.
+      if (e.target.closest?.(".nowheel, input, textarea, select, button")) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Normalize delta across browsers/devices
+      let delta = e.deltaY;
+      if (e.deltaMode === 1) delta *= 16;
+      else if (e.deltaMode === 2) delta *= 800;
+
+      // Handle trackpad pinch (ctrlKey) vs standard wheel scroll
+      const zoomSensitivity = e.ctrlKey ? 0.025 : 0.002;
+      const zoomFactor = Math.pow(2, -delta * zoomSensitivity);
+
+      apply3DZoom(e.clientX, e.clientY, zoomFactor);
+    };
+
+    // Safari trackpad native pinch gesture support (GestureEvent)
+    let lastGestureScale = 1.0;
+
+    const handleGestureStart = (e) => {
+      const state = latest3DRef.current;
+      if (!state.is3D) return;
+      e.preventDefault();
+      e.stopPropagation();
+      lastGestureScale = 1.0;
+    };
+
+    const handleGestureChange = (e) => {
+      const state = latest3DRef.current;
+      if (!state.is3D) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const scaleDelta = e.scale / lastGestureScale;
+      lastGestureScale = e.scale;
+
+      apply3DZoom(e.clientX, e.clientY, scaleDelta);
+    };
+
+    const handleGestureEnd = (e) => {
+      const state = latest3DRef.current;
+      if (!state.is3D) return;
+      e.preventDefault();
+      e.stopPropagation();
+      lastGestureScale = 1.0;
+    };
+
+    // Use capture phase so we intercept before any child stopPropagation
+    container.addEventListener("wheel", handleWheel, { capture: true, passive: false });
+    container.addEventListener("gesturestart", handleGestureStart, { capture: true, passive: false });
+    container.addEventListener("gesturechange", handleGestureChange, { capture: true, passive: false });
+    container.addEventListener("gestureend", handleGestureEnd, { capture: true, passive: false });
+
     return () => {
-      container.removeEventListener("wheel", handleWheel);
+      container.removeEventListener("wheel", handleWheel, { capture: true });
+      container.removeEventListener("gesturestart", handleGestureStart, { capture: true });
+      container.removeEventListener("gesturechange", handleGestureChange, { capture: true });
+      container.removeEventListener("gestureend", handleGestureEnd, { capture: true });
     };
   }, []);
 
