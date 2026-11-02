@@ -125,7 +125,7 @@ export default function SpatialCommandDeck({ onAddNode, onShare }) {
                 ? "bg-zinc-700 text-white shadow-sm border border-zinc-600"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50"
             }`}
-            title="3D Spatial Perspective View (Without Dots)"
+            title="3D Spatial Perspective View"
           >
             <Box size={13} className={viewMode === "3d" || viewMode === "3d-perspective" ? "text-white" : "text-zinc-400"} />
             <span>3D Spatial</span>

@@ -452,7 +452,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
       className="relative w-full h-full text-zinc-100 select-none overflow-hidden font-sans transition-colors duration-500"
       style={{
         perspective: is3D ? "1400px" : "none",
-        perspectiveOrigin: "50% 40%",
+        perspectiveOrigin: "50% 50%",
         background: "#1c1c22",
       }}
     >
@@ -489,13 +489,13 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
       {/* ── Spatial Command Deck (Centered bottom HUD) ── */}
       <SpatialCommandDeck onAddNode={addNodeAtCenter} onShare={onShare} />
 
-      {/* ── 3D Transformed Canvas Stage (Seamless Boundless Grey Space) ── */}
+      {/* ── 3D Transformed Canvas Stage (Infinite Boundless Tilted Dotted Floor) ── */}
       <div
         className="w-full h-full origin-center transition-transform duration-500 ease-out"
         style={{
           transformStyle: "preserve-3d",
           transform: is3D
-            ? `rotateX(${effectivePitch}deg) rotateZ(${effectiveYaw}deg)`
+            ? `rotateX(${effectivePitch}deg) rotateZ(${effectiveYaw}deg) scale(1.45)`
             : "none",
         }}
       >
@@ -519,15 +519,15 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           onMoveStart={onMoveStart}
           onNodeDoubleClick={onNodeDoubleClick}
         >
-          {/* Dotted canvas background rendered ONLY in 2D mode; in 3D: pure grey without dots */}
-          {!is3D && (
-            <Background
-              variant="dots"
-              gap={24}
-              size={1.5}
-              color="#4b4b55"
-            />
-          )}
+          {/* Dotted canvas background — Identical in 2D and 3D mode, tilts infinitely with perspective */}
+          <Background
+            variant="dots"
+            gap={24}
+            size={1.5}
+            color="#4b4b55"
+            bgColor="#1c1c22"
+            className="!bg-[#1c1c22]"
+          />
 
 
           {/* MiniMap — ONLY rendered in 2D mode; completely hidden in 3D */}
