@@ -66,31 +66,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   const [isMiniMapOpen, setIsMiniMapOpen] = useState(true);
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
 
-  // Dynamic subtle mouse parallax on the 3D canvas stage
-  const [mouseParallax, setMouseParallax] = useState({ pitch: 0, yaw: 0 });
   const canvasContainerRef = useRef(null);
-
-  const handleCanvasMouseMove = useCallback(
-    (e) => {
-      if (!enableParallax || viewMode === "3d-topdown") {
-        if (mouseParallax.pitch !== 0 || mouseParallax.yaw !== 0) {
-          setMouseParallax({ pitch: 0, yaw: 0 });
-        }
-        return;
-      }
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      const normX = (e.clientX - width / 2) / (width / 2);
-      const normY = (e.clientY - height / 2) / (height / 2);
-
-      // Gentle interactive tilt reaction (±2.5°)
-      setMouseParallax({
-        pitch: -normY * 2.5,
-        yaw: normX * 3,
-      });
-    },
-    [enableParallax, viewMode, mouseParallax]
-  );
 
   const sessionsRef = useRef(sessions);
   useEffect(() => {
@@ -430,8 +406,8 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
 
   // Calculate 3D perspective pitch and yaw: 3D Spatial vs 2D Canvas
   const is3D = viewMode === "3d" || viewMode === "3d-perspective";
-  const effectivePitch = is3D ? Math.max(0, canvasPitch + mouseParallax.pitch) : 0;
-  const effectiveYaw = is3D ? canvasYaw + mouseParallax.yaw : 0;
+  const effectivePitch = is3D ? canvasPitch : 0;
+  const effectiveYaw = is3D ? canvasYaw : 0;
 
   // Live synchronous viewport ref to avoid lag or stale state during high-frequency trackpad events
   const activeViewportRef = useRef(null);
@@ -461,18 +437,23 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     };
   });
 
+  // Gesture tracking refs for Safari trackpad pinch
+  const isGestureActiveRef = useRef(false);
+  const lastGestureScaleRef = useRef(1.0);
+
   // Precise cursor-anchored 3D zooming engine for mouse wheels and trackpad pinch / scroll
   useEffect(() => {
-    const container = canvasContainerRef.current;
-    if (!container) return;
-
     const apply3DZoom = (clientX, clientY, zoomFactor) => {
       const state = latest3DRef.current;
       if (!state.is3D) return;
 
+      const container = canvasContainerRef.current;
+      if (!container) return;
+
       const rect = container.getBoundingClientRect();
       const W = rect.width;
       const H = rect.height;
+      if (!W || !H) return;
 
       // Cursor position relative to container's perspective center
       const xs = clientX - (rect.left + W / 2);
@@ -531,18 +512,35 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
       const state = latest3DRef.current;
       if (!state.is3D) return;
 
-      // Don't intercept zooming if interacting with inputs, textareas, select, etc.
-      if (e.target.closest?.(".nowheel, input, textarea, select, button")) {
+      const container = canvasContainerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      if (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      ) {
         return;
       }
 
-      e.preventDefault();
-      e.stopPropagation();
+      // Don't intercept zooming if interacting with inputs, textareas, select, button, etc.
+      if (e.target?.closest?.("input, textarea, select, button, .nodrag, .nowheel, [role='dialog']")) {
+        return;
+      }
 
-      // Normalize delta across browsers/devices
+      // Avoid double zoom on Safari when gesture event is already handling trackpad pinch
+      if (isGestureActiveRef.current && e.ctrlKey) return;
+
       let delta = e.deltaY;
       if (e.deltaMode === 1) delta *= 16;
       else if (e.deltaMode === 2) delta *= 800;
+
+      if (Math.abs(delta) < 0.1) return;
+
+      e.preventDefault();
+      e.stopPropagation();
 
       // Handle trackpad pinch (ctrlKey) vs standard wheel scroll
       const zoomSensitivity = e.ctrlKey ? 0.025 : 0.002;
@@ -552,67 +550,68 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     };
 
     // Safari trackpad native pinch gesture support (GestureEvent)
-    let lastGestureScale = 1.0;
-
     const handleGestureStart = (e) => {
       const state = latest3DRef.current;
       if (!state.is3D) return;
+
+      const container = canvasContainerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      if (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      ) {
+        return;
+      }
+
       e.preventDefault();
       e.stopPropagation();
-      lastGestureScale = 1.0;
+      isGestureActiveRef.current = true;
+      lastGestureScaleRef.current = 1.0;
     };
 
     const handleGestureChange = (e) => {
       const state = latest3DRef.current;
-      if (!state.is3D) return;
+      if (!state.is3D || !isGestureActiveRef.current) return;
+
       e.preventDefault();
       e.stopPropagation();
 
-      const scaleDelta = e.scale / lastGestureScale;
-      lastGestureScale = e.scale;
+      const scaleDelta = e.scale / (lastGestureScaleRef.current || 1.0);
+      lastGestureScaleRef.current = e.scale;
 
       apply3DZoom(e.clientX, e.clientY, scaleDelta);
     };
 
     const handleGestureEnd = (e) => {
-      const state = latest3DRef.current;
-      if (!state.is3D) return;
-      e.preventDefault();
-      e.stopPropagation();
-      lastGestureScale = 1.0;
+      if (isGestureActiveRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        isGestureActiveRef.current = false;
+        lastGestureScaleRef.current = 1.0;
+      }
     };
 
-    // Use capture phase so we intercept before any child stopPropagation
-    container.addEventListener("wheel", handleWheel, { capture: true, passive: false });
-    container.addEventListener("gesturestart", handleGestureStart, { capture: true, passive: false });
-    container.addEventListener("gesturechange", handleGestureChange, { capture: true, passive: false });
-    container.addEventListener("gestureend", handleGestureEnd, { capture: true, passive: false });
+    // Attach to window in capture phase so listeners are always active
+    window.addEventListener("wheel", handleWheel, { capture: true, passive: false });
+    window.addEventListener("gesturestart", handleGestureStart, { capture: true, passive: false });
+    window.addEventListener("gesturechange", handleGestureChange, { capture: true, passive: false });
+    window.addEventListener("gestureend", handleGestureEnd, { capture: true, passive: false });
 
     return () => {
-      container.removeEventListener("wheel", handleWheel, { capture: true });
-      container.removeEventListener("gesturestart", handleGestureStart, { capture: true });
-      container.removeEventListener("gesturechange", handleGestureChange, { capture: true });
-      container.removeEventListener("gestureend", handleGestureEnd, { capture: true });
+      window.removeEventListener("wheel", handleWheel, { capture: true });
+      window.removeEventListener("gesturestart", handleGestureStart, { capture: true });
+      window.removeEventListener("gesturechange", handleGestureChange, { capture: true });
+      window.removeEventListener("gestureend", handleGestureEnd, { capture: true });
     };
   }, []);
-
-  if (isLoadingCanvas) {
-    return (
-      <div className="relative w-full h-full bg-[#141414] flex items-center justify-center text-zinc-300 select-none overflow-hidden font-sans">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 rounded-full border-2 border-zinc-700 border-t-zinc-300 animate-spin" />
-          <span className="text-[10px] text-zinc-300 font-bold uppercase tracking-wider font-mono">
-            Initializing Workspace...
-          </span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
       ref={canvasContainerRef}
-      onMouseMove={handleCanvasMouseMove}
       className="relative w-full h-full bg-[#141414] text-zinc-100 select-none overflow-hidden font-sans transition-colors duration-500"
       style={{
         perspective: is3D ? "1400px" : "none",
@@ -620,6 +619,17 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         background: "#141414",
       }}
     >
+      {/* ── Loading Overlay during initial workspace initialization ── */}
+      {isLoadingCanvas && (
+        <div className="absolute inset-0 z-50 bg-[#141414] flex items-center justify-center text-zinc-300 select-none overflow-hidden font-sans">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-6 h-6 rounded-full border-2 border-zinc-700 border-t-zinc-300 animate-spin" />
+            <span className="text-[10px] text-zinc-300 font-bold uppercase tracking-wider font-mono">
+              Initializing Workspace...
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── Minimalist Mode Badge ── */}
       <div className="absolute top-5 left-16 z-20 pointer-events-none select-none flex items-center gap-2">
