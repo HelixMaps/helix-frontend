@@ -232,7 +232,7 @@ function SharedMapContent({ params }) {
   }
 
   return (
-    <div className="relative w-screen h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans select-none">
+    <div className="relative w-screen h-screen bg-[#141414] text-zinc-100 overflow-hidden font-sans select-none">
       {/* ── 1. Futuristic Floating Header HUD ── */}
       <header className="absolute top-4 inset-x-4 z-40 pointer-events-none flex items-center justify-between gap-3">
         {/* Left: Brand + Map Title + Security Badge */}

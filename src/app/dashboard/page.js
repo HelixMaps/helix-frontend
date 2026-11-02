@@ -341,7 +341,7 @@ function DashboardContent() {
       </div>
 
       {/* ── 3. Main workspace ── */}
-      <main className="flex-1 h-full relative overflow-hidden bg-zinc-950">
+      <main className="flex-1 h-full relative overflow-hidden bg-[#141414]">
         {/* Desktop sidebar collapse toggle */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}

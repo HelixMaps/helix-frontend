@@ -53,15 +53,7 @@ body {
   background-clip: padding-box;
 }
 
-/* 3D Spatial Canvas & Node Extrusion Styles */
-.react-flow,
-.react-flow.dark,
-.react-flow__pane,
-.react-flow__viewport,
-.react-flow__container {
-  background: transparent !important;
-  background-color: transparent !important;
-}
+
 
 .react-flow__node {
   overflow: visible !important;

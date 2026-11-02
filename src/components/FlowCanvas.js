@@ -449,11 +449,11 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     <div
       ref={canvasContainerRef}
       onMouseMove={handleCanvasMouseMove}
-      className="relative w-full h-full bg-zinc-950 text-zinc-100 select-none overflow-hidden font-sans transition-colors duration-500"
+      className="relative w-full h-full bg-[#141414] text-zinc-100 select-none overflow-hidden font-sans transition-colors duration-500"
       style={{
         perspective: is3D ? "1400px" : "none",
         perspectiveOrigin: "50% 50%",
-        background: "#09090b",
+        background: "#141414",
       }}
     >
 
@@ -512,22 +512,14 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           fitView
           fitViewOptions={fitViewOptions}
           colorMode="dark"
-          className="w-full h-full !bg-transparent"
-          style={{ background: "transparent", backgroundColor: "transparent" }}
+          className="w-full h-full"
           onNodeContextMenu={onNodeContextMenu}
           onPaneClick={onPaneClick}
           onMoveStart={onMoveStart}
           onNodeDoubleClick={onNodeDoubleClick}
         >
-          {/* Dotted canvas background — Identical in 2D and 3D mode, tilts infinitely with perspective */}
-          <Background
-            variant="dots"
-            gap={24}
-            size={1.5}
-            color="#27272a"
-            bgColor="#09090b"
-            className="!bg-zinc-950"
-          />
+          {/* Dotted canvas background matching commit 92ac7aaf590956498a67daf79b420d16608170f7 */}
+          <Background variant="dots" gap={24} size={1.5} color="#27272a" />
 
 
           {/* MiniMap — ONLY rendered in 2D mode; completely hidden in 3D */}
