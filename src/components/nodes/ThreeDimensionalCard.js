@@ -191,41 +191,41 @@ export default function ThreeDimensionalCard({
         <>
           {/* Base plate at Z=0 */}
           <div
-            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-800/90`}
+            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-900/90`}
             style={{
-              background: "#121319",
+              background: "#090a0d",
               transform: "translateZ(0px)",
             }}
           />
           {/* Extrusion slice 1 at Z=3.5px */}
           <div
-            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-800`}
+            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-850/80`}
             style={{
-              background: "#171821",
+              background: "#0c0d12",
               transform: "translateZ(3.5px)",
             }}
           />
           {/* Extrusion slice 2 at Z=7px */}
           <div
-            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-700/60`}
+            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-800/70`}
             style={{
-              background: "#1d1f2a",
+              background: "#101117",
               transform: "translateZ(7px)",
             }}
           />
           {/* Extrusion slice 3 at Z=10.5px */}
           <div
-            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-700/75`}
+            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-750/60`}
             style={{
-              background: "#222533",
+              background: "#14161d",
               transform: "translateZ(10.5px)",
             }}
           />
           {/* Extrusion slice 4 at Z=14px */}
           <div
-            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-600/70`}
+            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-700/60`}
             style={{
-              background: "#282b3a",
+              background: "#181a23",
               transform: "translateZ(14px)",
             }}
           />
@@ -237,11 +237,11 @@ export default function ThreeDimensionalCard({
          ───────────────────────────────────────────────────────────── */}
       <div
         className={`group relative min-w-[215px] ${activeShapeClass} transition-all duration-200 border-[1.5px] ${
-          selected ? theme.borderSelected : "border-zinc-500/80 hover:border-zinc-300"
+          selected ? theme.borderSelected : "border-zinc-600/80 hover:border-zinc-400"
         }`}
         style={{
           background:
-            "linear-gradient(150deg, #2d303f 0%, #222430 55%, #181922 100%)",
+            "linear-gradient(150deg, #1b1c24 0%, #13141a 55%, #0d0e13 100%)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           transformStyle: "preserve-3d",

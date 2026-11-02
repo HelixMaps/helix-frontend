@@ -57,7 +57,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView, getViewport, setViewport } = useReactFlow();
   const [menu, setMenu] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [activeSearch, setActiveSearch] = useState(null);
@@ -432,9 +432,113 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   const effectivePitch = is3D ? Math.max(0, canvasPitch + mouseParallax.pitch) : 0;
   const effectiveYaw = is3D ? canvasYaw + mouseParallax.yaw : 0;
 
+  // Keep latest refs for 3D cursor-anchored zooming without event listener churn
+  const latest3DRef = useRef({
+    is3D,
+    effectivePitch,
+    effectiveYaw,
+    getViewport,
+    setViewport,
+  });
+
+  useEffect(() => {
+    latest3DRef.current = {
+      is3D,
+      effectivePitch,
+      effectiveYaw,
+      getViewport,
+      setViewport,
+    };
+  });
+
+  // Precise cursor-anchored 3D zooming via ray-plane unprojection
+  useEffect(() => {
+    const container = canvasContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      const state = latest3DRef.current;
+      if (!state.is3D) return;
+
+      // Don't intercept zooming if interacting with inputs, textareas, select, etc.
+      if (e.target.closest?.(".nowheel, input, textarea, select, button")) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const rect = container.getBoundingClientRect();
+      const W = rect.width;
+      const H = rect.height;
+
+      // Cursor position relative to container's perspective center
+      const xs = e.clientX - (rect.left + W / 2);
+      const ys = e.clientY - (rect.top + H / 2);
+
+      const D = 1400; // CSS perspective distance
+      const S = 1.45; // 3D stage scale factor
+      const pitchRad = (state.effectivePitch * Math.PI) / 180;
+      const yawRad = (state.effectiveYaw * Math.PI) / 180;
+
+      const denom = D + ys * Math.tan(pitchRad);
+      if (Math.abs(denom) < 0.001) return;
+
+      const t = D / denom;
+      const cosPitch = Math.cos(pitchRad);
+      if (Math.abs(cosPitch) < 0.001) return;
+
+      const A = (t * xs) / S;
+      const B = (t * ys) / (S * cosPitch);
+
+      const cosYaw = Math.cos(yawRad);
+      const sinYaw = Math.sin(yawRad);
+
+      const u = A * cosYaw + B * sinYaw;
+      const v = -A * sinYaw + B * cosYaw;
+
+      // Local coordinate on the ReactFlow canvas plane
+      const localX = u + W / 2;
+      const localY = v + H / 2;
+
+      // Current viewport
+      const currentViewport = state.getViewport();
+      const currentZoom = currentViewport.zoom;
+
+      // Normalize delta across browsers/devices
+      let delta = e.deltaY;
+      if (e.deltaMode === 1) delta *= 16;
+      else if (e.deltaMode === 2) delta *= 800;
+
+      // Smooth zoom multiplier
+      const zoomSensitivity = e.ctrlKey ? 0.01 : 0.0018;
+      const zoomFactor = Math.pow(2, -delta * zoomSensitivity);
+      const minZoom = 0.05;
+      const maxZoom = 4.0;
+      const newZoom = Math.min(Math.max(currentZoom * zoomFactor, minZoom), maxZoom);
+
+      if (newZoom === currentZoom) return;
+
+      // Calculate graph coordinates under cursor
+      const flowX = (localX - currentViewport.x) / currentZoom;
+      const flowY = (localY - currentViewport.y) / currentZoom;
+
+      // Solve for new viewport offsets so (flowX, flowY) stays pinned at (localX, localY)
+      const newX = localX - flowX * newZoom;
+      const newY = localY - flowY * newZoom;
+
+      state.setViewport({ x: newX, y: newY, zoom: newZoom }, { duration: 0 });
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
+
   if (isLoadingCanvas) {
     return (
-      <div className="relative w-full h-full bg-[#1e1e24] flex items-center justify-center text-zinc-300 select-none overflow-hidden font-sans">
+      <div className="relative w-full h-full bg-[#141414] flex items-center justify-center text-zinc-300 select-none overflow-hidden font-sans">
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 rounded-full border-2 border-zinc-700 border-t-zinc-300 animate-spin" />
           <span className="text-[10px] text-zinc-300 font-bold uppercase tracking-wider font-mono">
@@ -512,6 +616,8 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           fitView
           fitViewOptions={fitViewOptions}
           colorMode="dark"
+          zoomOnScroll={!is3D}
+          zoomOnPinch={!is3D}
           className="w-full h-full"
           onNodeContextMenu={onNodeContextMenu}
           onPaneClick={onPaneClick}
