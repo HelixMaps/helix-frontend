@@ -449,11 +449,11 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     <div
       ref={canvasContainerRef}
       onMouseMove={handleCanvasMouseMove}
-      className="relative w-full h-full text-zinc-100 select-none overflow-hidden font-sans transition-colors duration-500"
+      className="relative w-full h-full bg-zinc-950 text-zinc-100 select-none overflow-hidden font-sans transition-colors duration-500"
       style={{
         perspective: is3D ? "1400px" : "none",
         perspectiveOrigin: "50% 50%",
-        background: "#1c1c22",
+        background: "#09090b",
       }}
     >
 
@@ -524,9 +524,9 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
             variant="dots"
             gap={24}
             size={1.5}
-            color="#4b4b55"
-            bgColor="#1c1c22"
-            className="!bg-[#1c1c22]"
+            color="#27272a"
+            bgColor="#09090b"
+            className="!bg-zinc-950"
           />
 
 

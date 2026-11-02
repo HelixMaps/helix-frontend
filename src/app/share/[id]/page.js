@@ -190,7 +190,7 @@ function SharedMapContent({ params }) {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-screen bg-[#1c1c22] items-center justify-center text-zinc-300 font-sans select-none">
+      <div className="flex h-screen w-screen bg-zinc-950 items-center justify-center text-zinc-300 font-sans select-none">
         <div className="flex flex-col items-center gap-3">
           <div className="w-7 h-7 rounded-full border-2 border-zinc-700 border-t-blue-500 animate-spin shadow-[0_0_15px_rgba(59,130,246,0.3)]" />
           <span className="text-xs uppercase tracking-widest font-mono text-zinc-400 font-bold">
@@ -203,7 +203,7 @@ function SharedMapContent({ params }) {
 
   if (error || !mapData) {
     return (
-      <div className="flex h-screen w-screen bg-[#1c1c22] items-center justify-center text-zinc-300 font-sans p-4 select-none">
+      <div className="flex h-screen w-screen bg-zinc-950 items-center justify-center text-zinc-300 font-sans p-4 select-none">
         <div className="max-w-md w-full bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 shadow-2xl text-center">
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 mx-auto flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(244,63,94,0.2)]">
             <Lock size={22} />
@@ -232,7 +232,7 @@ function SharedMapContent({ params }) {
   }
 
   return (
-    <div className="relative w-screen h-screen bg-[#1c1c22] text-zinc-100 overflow-hidden font-sans select-none">
+    <div className="relative w-screen h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans select-none">
       {/* ── 1. Futuristic Floating Header HUD ── */}
       <header className="absolute top-4 inset-x-4 z-40 pointer-events-none flex items-center justify-between gap-3">
         {/* Left: Brand + Map Title + Security Badge */}
@@ -358,7 +358,7 @@ export default function SharedMapPage({ params }) {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen w-screen bg-[#1c1c22] items-center justify-center text-zinc-300 font-sans">
+        <div className="flex h-screen w-screen bg-zinc-950 items-center justify-center text-zinc-300 font-sans">
           <div className="flex flex-col items-center gap-3">
             <div className="w-7 h-7 rounded-full border-2 border-zinc-700 border-t-blue-500 animate-spin" />
             <span className="text-xs uppercase tracking-widest font-mono text-zinc-400 font-bold">
