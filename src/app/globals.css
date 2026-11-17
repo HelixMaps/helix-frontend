@@ -55,9 +55,18 @@ body {
 
 
 
+/* ── ReactFlow 3D overrides ──────────────────────────────────────────── */
 .react-flow__node {
   overflow: visible !important;
   pointer-events: all;
+  transform-style: preserve-3d;
+  /* GPU-accelerate nodes so drag does not trigger layout reflows */
+  will-change: transform;
+  contain: layout style;
+}
+
+.react-flow__nodes {
+  transform-style: preserve-3d;
 }
 
 .react-flow__viewport {
@@ -70,9 +79,21 @@ body {
 
 svg.react-flow__edges {
   overflow: visible !important;
+  /* Hint the browser that edge paths will move frequently */
+  will-change: contents;
 }
 
-/* 3D Node Specular Gleam animation */
+/* ── Edge energy flow dash animation ─────────────────────────────────── */
+@keyframes edge-dash-flow {
+  to { stroke-dashoffset: -40; }
+}
+
+.edge-energy-flow {
+  animation: edge-dash-flow 1.6s linear infinite;
+  will-change: stroke-dashoffset;
+}
+
+/* ── 3D Node Specular Gleam animation ────────────────────────────────── */
 @keyframes specular-pulse {
   0%, 100% { opacity: 0.7; }
   50% { opacity: 1; }

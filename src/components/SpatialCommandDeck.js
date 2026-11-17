@@ -14,6 +14,7 @@ import {
   ZoomOut, 
   Wand2,
   Share2,
+  Download,
   ChevronDown
 } from "lucide-react";
 import { useMapConfig } from "@/context/MapConfigContext";
@@ -28,8 +29,9 @@ import { layoutNodesHierarchical } from "@/utils/autoLayout";
  * - One-click "Auto-Organize Matrix" layout
  * - 3D View Mode Switcher: 3D Matrix, Isometric, Clean Studio
  * - Camera controls: Fit View, Zoom +, Zoom -
+ * - Export Snapshot: PNG, JPEG, PDF
  */
-export default function SpatialCommandDeck({ onAddNode, onShare }) {
+export default function SpatialCommandDeck({ onAddNode, onShare, onExport }) {
   const { viewMode, changeViewMode } = useMapConfig();
   const { getNodes, getEdges, setNodes, fitView, zoomIn, zoomOut } = useReactFlow();
   const [isOrganizing, setIsOrganizing] = useState(false);
@@ -113,6 +115,18 @@ export default function SpatialCommandDeck({ onAddNode, onShare }) {
           >
             <Share2 size={13} className="text-blue-400" />
             <span className="hidden md:inline">Share</span>
+          </button>
+        )}
+
+        {/* Export Snapshot Button */}
+        {onExport && (
+          <button
+            onClick={onExport}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-semibold cursor-pointer active:scale-95 transition-all shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+            title="Export map snapshot as Image (PNG/JPEG) or PDF"
+          >
+            <Download size={13} className="text-emerald-400" />
+            <span className="hidden md:inline">Export</span>
           </button>
         )}
 

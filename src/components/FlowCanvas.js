@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useEffect, useRef } from "react";
+import React, { useCallback, useState, useEffect, useRef, useMemo } from "react";
 import {
   ReactFlow,
   MiniMap,
@@ -18,15 +18,49 @@ import "@xyflow/react/dist/style.css";
 import IdeaNode from "./nodes/IdeaNode";
 import TaskNode from "./nodes/TaskNode";
 import ResourceNode from "./nodes/ResourceNode";
-import ThreeDimensionalEdge from "./edges/ThreeDimensionalEdge";
+import ThreeDimensionalEdge, { SharedEdgeDefs } from "./edges/ThreeDimensionalEdge";
 import SpatialCommandDeck from "./SpatialCommandDeck";
 import NodePicker from "./NodePicker";
 import ContextMenu from "./ContextMenu";
 import DetailsDrawer from "./DetailsDrawer";
 import NodeSearchBar from "./NodeSearchBar";
+import ExportSnapshotModal from "./ExportSnapshotModal";
 import { useMapConfig } from "@/context/MapConfigContext";
 import { Map, Minimize2 } from "lucide-react";
-import { fetchMap, saveMapGraph } from "@/service/mapService";
+import { fetchMap, saveMapGraph, createMap } from "@/service/mapService";
+
+// Helper to determine if a map graph has meaningful user modifications from baseline
+const isGraphModified = (currNodes, currEdges, baseline) => {
+  if (!baseline || !baseline.nodes) return false;
+  const baseNodes = baseline.nodes;
+  const baseEdges = baseline.edges || [];
+
+  // Edge count changed
+  if (currEdges.length !== baseEdges.length) return true;
+
+  // Node count changed
+  if (currNodes.length !== baseNodes.length) return true;
+
+  // Check each node for user modifications
+  for (const cn of currNodes) {
+    const bn = baseNodes.find((n) => n.id === cn.id);
+    if (!bn) return true;
+    if (Math.round(cn.position.x) !== Math.round(bn.position.x)) return true;
+    if (Math.round(cn.position.y) !== Math.round(bn.position.y)) return true;
+    if (cn.data?.label !== bn.data?.label) return true;
+    if (cn.data?.summary !== bn.data?.summary) return true;
+    if (cn.type !== bn.type) return true;
+  }
+
+  // Check edges
+  for (const ce of currEdges) {
+    const be = baseEdges.find((e) => e.id === ce.id);
+    if (!be) return true;
+    if (ce.source !== be.source || ce.target !== be.target) return true;
+  }
+
+  return false;
+};
 
 // Registering our custom 3D nodes
 const nodeTypes = {
@@ -45,7 +79,7 @@ const edgeTypes = {
   smoothstep: ThreeDimensionalEdge,
 };
 
-function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSessions, onShare }) {
+function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGuest, sessions, setSessions, onShare, triggerExport }) {
   const {
     edgeStyle,
     changeNodeShape,
@@ -65,6 +99,13 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   const [highlightedNodeId, setHighlightedNodeId] = useState(null);
   const [isMiniMapOpen, setIsMiniMapOpen] = useState(true);
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (triggerExport && triggerExport > 0) {
+      setIsExportModalOpen(true);
+    }
+  }, [triggerExport]);
 
   const canvasContainerRef = useRef(null);
 
@@ -72,6 +113,10 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   useEffect(() => {
     sessionsRef.current = sessions;
   }, [sessions]);
+
+  // Baseline snapshot ref to detect changes from initial state
+  const initialBaselineRef = useRef(null);
+  const isSavingDraftRef = useRef(false);
 
   // Ref to store latest values for flushing on session switch / unmount
   const latestStateRef = useRef({ nodes, edges, activeSessionId });
@@ -83,29 +128,49 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   useEffect(() => {
     return () => {
       const { nodes: ns, edges: es, activeSessionId: prevSessionId } = latestStateRef.current;
-      if (prevSessionId && ns.length > 0) {
-        if (isGuest) {
-          setSessions((prev) =>
-            prev.map((s) =>
-              s._id === prevSessionId
-                ? { ...s, nodes: ns, edges: es }
-                : s
-            )
-          );
-          return;
-        }
-        const flushSave = async () => {
+      if (!prevSessionId || ns.length === 0 || isGuest) return;
+
+      const isDraft = prevSessionId.startsWith("draft-");
+      if (isDraft) {
+        // If the draft was untouched, DO NOT write to database
+        const hasChanged = isGraphModified(ns, es, initialBaselineRef.current);
+        if (!hasChanged) return;
+
+        // If draft was modified, flush create to DB
+        const flushCreate = async () => {
           try {
             const token = await getToken();
-            if (token) {
-              await saveMapGraph(token, prevSessionId, ns, es);
-            }
+            if (!token) return;
+            const currentSession = sessionsRef.current.find((s) => s._id === prevSessionId);
+            const title = currentSession?.title || "Untitled Mind Map";
+            const styleConfig = currentSession?.styleConfig || { nodeShape: "rounded", edgeStyle: "smoothstep" };
+            const savedMap = await createMap(token, title, null, null, {
+              nodes: ns,
+              edges: es,
+              styleConfig
+            });
+            setSessions((prev) =>
+              prev.map((s) => (s._id === prevSessionId ? { ...savedMap, isDraft: false } : s))
+            );
           } catch (err) {
-            console.error(`[Unmount Flush] Failed to flush graph for map ${prevSessionId}:`, err);
+            console.error(`[Unmount Flush] Failed to flush create draft for map ${prevSessionId}:`, err);
           }
         };
-        flushSave();
+        flushCreate();
+        return;
       }
+
+      const flushSave = async () => {
+        try {
+          const token = await getToken();
+          if (token) {
+            await saveMapGraph(token, prevSessionId, ns, es);
+          }
+        } catch (err) {
+          console.error(`[Unmount Flush] Failed to flush graph for map ${prevSessionId}:`, err);
+        }
+      };
+      flushSave();
     };
   }, [activeSessionId, getToken, isGuest, setSessions]);
 
@@ -113,23 +178,44 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   useEffect(() => {
     if (!activeSessionId) return;
 
+    // If activeSessionId matches the currently active non-draft baseline (just transitioned from draft), skip re-fetch
+    if (
+      initialBaselineRef.current &&
+      initialBaselineRef.current.sessionId === activeSessionId &&
+      !initialBaselineRef.current.isDraft
+    ) {
+      setIsLoadingCanvas(false);
+      return;
+    }
+
     let active = true;
 
     const loadMapDetails = async () => {
       try {
         setIsLoadingCanvas(true);
-        if (isGuest) {
-          const mapData = sessionsRef.current.find((s) => s._id === activeSessionId);
-          if (mapData && active) {
-            setNodes(mapData.nodes || []);
-            setEdges(mapData.edges || []);
+        const currentSession = sessionsRef.current.find((s) => s._id === activeSessionId);
+        const isDraft = currentSession?.isDraft || activeSessionId.startsWith("draft-");
 
-            if (mapData.styleConfig) {
-              if (mapData.styleConfig.nodeShape) {
-                changeNodeShape(mapData.styleConfig.nodeShape);
+        if (isGuest || isDraft) {
+          if (currentSession && active) {
+            const initialNodes = currentSession.nodes || [];
+            const initialEdges = currentSession.edges || [];
+            setNodes(initialNodes);
+            setEdges(initialEdges);
+
+            initialBaselineRef.current = {
+              sessionId: activeSessionId,
+              nodes: JSON.parse(JSON.stringify(initialNodes)),
+              edges: JSON.parse(JSON.stringify(initialEdges)),
+              isDraft: true,
+            };
+
+            if (currentSession.styleConfig) {
+              if (currentSession.styleConfig.nodeShape) {
+                changeNodeShape(currentSession.styleConfig.nodeShape);
               }
-              if (mapData.styleConfig.edgeStyle) {
-                changeEdgeStyle(mapData.styleConfig.edgeStyle);
+              if (currentSession.styleConfig.edgeStyle) {
+                changeEdgeStyle(currentSession.styleConfig.edgeStyle);
               }
             }
           }
@@ -141,8 +227,17 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         if (!token) return;
         const mapData = await fetchMap(token, activeSessionId);
         if (active) {
-          setNodes(mapData.nodes || []);
-          setEdges(mapData.edges || []);
+          const loadedNodes = mapData.nodes || [];
+          const loadedEdges = mapData.edges || [];
+          setNodes(loadedNodes);
+          setEdges(loadedEdges);
+
+          initialBaselineRef.current = {
+            sessionId: activeSessionId,
+            nodes: JSON.parse(JSON.stringify(loadedNodes)),
+            edges: JSON.parse(JSON.stringify(loadedEdges)),
+            isDraft: false,
+          };
 
           if (mapData.styleConfig) {
             if (mapData.styleConfig.nodeShape) {
@@ -169,35 +264,80 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     };
   }, [activeSessionId, getToken, isGuest, setNodes, setEdges, changeNodeShape, changeEdgeStyle]);
 
-  // 2. Debounced auto-save of nodes & edges
+  // Keep in-memory sessions updated with latest nodes & edges
   useEffect(() => {
     if (!activeSessionId || isLoadingCanvas) return;
+    setSessions((prev) =>
+      prev.map((s) =>
+        s._id === activeSessionId
+          ? { ...s, nodes, edges }
+          : s
+      )
+    );
+  }, [nodes, edges, activeSessionId, isLoadingCanvas, setSessions]);
 
-    if (isGuest) {
-      const saveTimeout = setTimeout(() => {
-        setSessions((prev) =>
-          prev.map((s) =>
-            s._id === activeSessionId
-              ? { ...s, nodes, edges }
-              : s
-          )
-        );
-      }, 1500);
-      return () => clearTimeout(saveTimeout);
+  // 2. Debounced auto-save of nodes & edges (only stores in DB when modified)
+  useEffect(() => {
+    if (!activeSessionId || isLoadingCanvas || isGuest) return;
+
+    const isDraft = activeSessionId.startsWith("draft-") ||
+      sessionsRef.current.find((s) => s._id === activeSessionId)?.isDraft;
+
+    // For draft maps, verify if any node, edge, or position was changed
+    if (isDraft) {
+      const hasChanged = isGraphModified(nodes, edges, initialBaselineRef.current);
+      if (!hasChanged) {
+        // Untouched empty map: do NOT store in DB
+        return;
+      }
     }
 
     const saveTimeout = setTimeout(async () => {
       try {
         const token = await getToken();
         if (!token) return;
-        await saveMapGraph(token, activeSessionId, nodes, edges);
+
+        if (isDraft) {
+          if (isSavingDraftRef.current) return;
+          isSavingDraftRef.current = true;
+
+          const currentSession = sessionsRef.current.find((s) => s._id === activeSessionId);
+          const title = currentSession?.title || "Untitled Mind Map";
+          const styleConfig = currentSession?.styleConfig || { nodeShape: "rounded", edgeStyle: "smoothstep" };
+
+          const savedMap = await createMap(token, title, null, null, {
+            nodes,
+            edges,
+            styleConfig
+          });
+
+          initialBaselineRef.current = {
+            sessionId: savedMap._id,
+            nodes: JSON.parse(JSON.stringify(nodes)),
+            edges: JSON.parse(JSON.stringify(edges)),
+            isDraft: false,
+          };
+          latestStateRef.current.activeSessionId = savedMap._id;
+
+          setSessions((prev) =>
+            prev.map((s) => (s._id === activeSessionId ? { ...savedMap, isDraft: false } : s))
+          );
+
+          if (setActiveSessionId) {
+            setActiveSessionId(savedMap._id);
+          }
+          isSavingDraftRef.current = false;
+        } else {
+          await saveMapGraph(token, activeSessionId, nodes, edges);
+        }
       } catch (err) {
         console.error("Error auto-saving map layout:", err);
+        isSavingDraftRef.current = false;
       }
     }, 1500);
 
     return () => clearTimeout(saveTimeout);
-  }, [nodes, edges, activeSessionId, getToken, isLoadingCanvas, isGuest, setSessions]);
+  }, [nodes, edges, activeSessionId, getToken, isLoadingCanvas, isGuest, setActiveSessionId, setSessions]);
 
   // Navigate to a node found by search
   const handleSearchNode = useCallback(
@@ -384,25 +524,27 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
     [screenToFlowPosition, setNodes]
   );
 
-  const fitViewOptions = {
+  const fitViewOptions = useMemo(() => ({
     padding: 0.35,
     maxZoom: 0.85,
-  };
+  }), []);
 
-  // Node highlighting for search matches
-  const displayNodes = nodes.map((n) => {
-    if (n.id !== highlightedNodeId) return n;
-    return {
-      ...n,
-      selected: true,
-    };
-  });
+  // Node highlighting for search matches — memoized to avoid new array refs on every render
+  const displayNodes = useMemo(() => {
+    if (!highlightedNodeId) return nodes;
+    return nodes.map((n) => {
+      if (n.id !== highlightedNodeId) return n;
+      return { ...n, selected: true };
+    });
+  }, [nodes, highlightedNodeId]);
 
-  // Always route edges through 3D edge renderer
-  const displayEdges = edges.map((e) => ({
-    ...e,
-    type: "threeDimensional",
-  }));
+  // Always route edges through 3D edge renderer — memoized
+  const displayEdges = useMemo(() => {
+    return edges.map((e) => ({
+      ...e,
+      type: "threeDimensional",
+    }));
+  }, [edges]);
 
   // Calculate 3D perspective pitch and yaw: 3D Spatial vs 2D Canvas
   const is3D = viewMode === "3d" || viewMode === "3d-perspective";
@@ -610,15 +752,16 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
   }, []);
 
   return (
-    <div
-      ref={canvasContainerRef}
-      className="relative w-full h-full bg-[#141414] text-zinc-100 select-none overflow-hidden font-sans transition-colors duration-500"
-      style={{
-        perspective: is3D ? "1400px" : "none",
-        perspectiveOrigin: "50% 50%",
-        background: "#141414",
-      }}
-    >
+    <>
+      <div
+        ref={canvasContainerRef}
+        className="relative w-full h-full bg-[#141414] text-zinc-100 select-none overflow-hidden font-sans transition-colors duration-500"
+        style={{
+          perspective: is3D ? "1400px" : "none",
+          perspectiveOrigin: "50% 50%",
+          background: "#141414",
+        }}
+      >
       {/* ── Loading Overlay during initial workspace initialization ── */}
       {isLoadingCanvas && (
         <div className="absolute inset-0 z-50 bg-[#141414] flex items-center justify-center text-zinc-300 select-none overflow-hidden font-sans">
@@ -632,7 +775,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
       )}
 
       {/* ── Minimalist Mode Badge ── */}
-      <div className="absolute top-5 left-16 z-20 pointer-events-none select-none flex items-center gap-2">
+      <div className="mode-badge export-exclude absolute top-5 left-16 z-20 pointer-events-none select-none flex items-center gap-2">
         <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-[0.22em] font-mono">
           Helix Workspace
         </span>
@@ -647,21 +790,32 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
         </span>
       </div>
 
-      {/* ── Floating 3D Node Picker ── */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-30">
+      {/* ── Floating Node Picker ── */}
+      <div className="node-picker-container export-exclude absolute top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
         <NodePicker onAddNode={addNodeAtCenter} />
       </div>
 
       {/* ── Node Search Bar + Active Badge ── */}
-      <NodeSearchBar
-        nodes={nodes}
-        onSearch={handleSearchNode}
-        onClear={handleClearSearch}
-        activeSearch={activeSearch}
-      />
+      <div className="node-search-bar export-exclude">
+        <NodeSearchBar
+          nodes={nodes}
+          onSearch={handleSearchNode}
+          onClear={handleClearSearch}
+          activeSearch={activeSearch}
+        />
+      </div>
 
       {/* ── Spatial Command Deck (Centered bottom HUD) ── */}
-      <SpatialCommandDeck onAddNode={addNodeAtCenter} onShare={onShare} />
+      <div className="spatial-command-deck export-exclude">
+        <SpatialCommandDeck
+          onAddNode={addNodeAtCenter}
+          onShare={onShare}
+          onExport={() => setIsExportModalOpen(true)}
+        />
+      </div>
+
+      {/* ── Shared SVG filter defs for all edges (mounted once) ── */}
+      <SharedEdgeDefs />
 
       {/* ── 3D Transformed Canvas Stage (Infinite Boundless Tilted Dotted Floor) ── */}
       <div
@@ -741,6 +895,7 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           )}
         </ReactFlow>
       </div>
+    </div>
 
       {/* ── Context Menu ── */}
       {menu && (
@@ -763,20 +918,34 @@ function FlowCanvasInner({ activeSessionId, getToken, isGuest, sessions, setSess
           onUpdateData={handleUpdateNodeData}
         />
       )}
-    </div>
+
+      {/* ── Export Snapshot Modal (Works for both logged in and guest users) ── */}
+      <ExportSnapshotModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        activeMap={sessions?.find((s) => s._id === activeSessionId) || sessions?.[0] || { title: "Mind Map" }}
+        canvasContainerRef={canvasContainerRef}
+        fitView={fitView}
+        getViewport={getViewport}
+        setViewport={setViewport}
+        viewMode={viewMode}
+      />
+    </>
   );
 }
 
-export default function FlowCanvas({ activeSessionId, getToken, isGuest, sessions, setSessions, onShare }) {
+export default function FlowCanvas({ activeSessionId, setActiveSessionId, getToken, isGuest, sessions, setSessions, onShare, triggerExport }) {
   return (
     <ReactFlowProvider>
       <FlowCanvasInner
         activeSessionId={activeSessionId}
+        setActiveSessionId={setActiveSessionId}
         getToken={getToken}
         isGuest={isGuest}
         sessions={sessions}
         setSessions={setSessions}
         onShare={onShare}
+        triggerExport={triggerExport}
       />
     </ReactFlowProvider>
   );

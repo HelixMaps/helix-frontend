@@ -64,7 +64,7 @@ export default function NodePicker({ onAddNode }) {
       >
         <span className="flex items-center gap-1.5">
           <Sparkles size={12} className="text-blue-400" />
-          <span>Add 3D Nodes</span>
+          <span>Add Node</span>
         </span>
         <ChevronDown
           size={14}

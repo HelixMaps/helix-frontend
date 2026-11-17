@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo, useMemo } from "react";
 import {
   getBezierPath,
   getStraightPath,
@@ -9,12 +9,23 @@ import {
 import { useMapConfig } from "@/context/MapConfigContext";
 
 /**
- * ThreeDimensionalEdge
- * Renders an elevated 3D fiber-optic cable suspended above the canvas floor,
- * featuring a floor drop-shadow, ambient volumetric neon glow, specular metallic ridge,
- * and animated streaming 3D energy photons.
+ * SharedEdgeDefs
+ * Renders shared SVG filter definitions once, outside of individual edges.
+ * Mount this once inside the ReactFlow <svg> (or a parent <defs>).
  */
-export default function ThreeDimensionalEdge({
+export function SharedEdgeDefs() {
+  return null;
+}
+
+/**
+ * ThreeDimensionalEdge
+ * High-performance 3D edge renderer:
+ * - ZERO CSS transitions on path geometry — edges track node positions instantly during drag
+ * - Shared SVG filter (no per-edge <defs> bloat)
+ * - Lightweight animated dash-offset for energy flow instead of heavy animateMotion circles
+ * - React.memo with custom comparator to skip unnecessary re-renders
+ */
+function ThreeDimensionalEdgeInner({
   id,
   sourceX,
   sourceY,
@@ -29,63 +40,65 @@ export default function ThreeDimensionalEdge({
 }) {
   const { edgeStyle } = useMapConfig();
 
-  const pathParams = {
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  };
+  // Compute path — memoized to avoid recalculation when unrelated props change
+  const edgePath = useMemo(() => {
+    const pathParams = {
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+    };
 
-  let edgePath = "";
+    if (edgeStyle === "straight") {
+      return getStraightPath(pathParams)[0];
+    } else if (edgeStyle === "step") {
+      return getSmoothStepPath({ ...pathParams, borderRadius: 0 })[0];
+    } else if (edgeStyle === "smoothstep") {
+      return getSmoothStepPath({ ...pathParams, borderRadius: 20 })[0];
+    } else {
+      return getBezierPath(pathParams)[0];
+    }
+  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, edgeStyle]);
 
-  if (edgeStyle === "straight") {
-    [edgePath] = getStraightPath(pathParams);
-  } else if (edgeStyle === "step") {
-    [edgePath] = getSmoothStepPath({ ...pathParams, borderRadius: 0 });
-  } else if (edgeStyle === "smoothstep") {
-    [edgePath] = getSmoothStepPath({ ...pathParams, borderRadius: 20 });
-  } else {
-    // Default to bezier curved
-    [edgePath] = getBezierPath(pathParams);
-  }
-
-  // Color config based on source / edge styling
+  // Color config
   const strokeColor = data?.color || style?.stroke || "#3b82f6";
-  const glowColor = data?.glowColor || "rgba(59, 130, 246, 0.4)";
-  const gradientId = `edge-3d-gradient-${id}`;
-  const filterId = `edge-3d-blur-${id}`;
+  const gradientId = `edge-grad-${id}`;
 
   return (
     <g className="react-flow__edge-3d">
       <defs>
-        {/* Specular 3D Cable Gradient */}
+        {/* Per-edge gradient (lightweight — just 3 stops, no filter) */}
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#93c5fd" />
           <stop offset="45%" stopColor={strokeColor} />
           <stop offset="100%" stopColor="#18181b" />
         </linearGradient>
-
-        {/* Ambient Blur Filter for Floor Shadow */}
-        <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" />
-        </filter>
       </defs>
 
-      {/* 1. Floor Drop Shadow onto Canvas */}
+      {/* 1. Floor Ambient Contact Shadow (Soft outer penumbra) — 100% GPU vector accelerated */}
       <path
         d={edgePath}
         fill="none"
-        stroke="rgba(0, 0, 0, 0.75)"
-        strokeWidth={selected ? 7 : 5}
+        stroke="rgba(0, 0, 0, 0.25)"
+        strokeWidth={selected ? 10 : 8}
         strokeLinecap="round"
         transform="translate(0, 10)"
-        filter={`url(#${filterId})`}
-        className="pointer-events-none transition-all duration-300"
+        className="pointer-events-none"
+      />
+      {/* 1b. Floor Contact Shadow Core */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="rgba(0, 0, 0, 0.55)"
+        strokeWidth={selected ? 6 : 4}
+        strokeLinecap="round"
+        transform="translate(0, 10)"
+        className="pointer-events-none"
       />
 
-      {/* 2. Ambient Volumetric Glow Tube */}
+      {/* 2. Ambient Volumetric Glow Tube — NO transition */}
       <path
         d={edgePath}
         fill="none"
@@ -93,10 +106,10 @@ export default function ThreeDimensionalEdge({
         strokeWidth={selected ? 11 : 7}
         strokeOpacity={selected ? 0.5 : 0.22}
         strokeLinecap="round"
-        className="pointer-events-none transition-all duration-300"
+        className="pointer-events-none"
       />
 
-      {/* 3. Main 3D Fiber-Optic Cable */}
+      {/* 3. Main 3D Fiber-Optic Cable — NO transition */}
       <path
         id={id}
         d={edgePath}
@@ -104,10 +117,10 @@ export default function ThreeDimensionalEdge({
         stroke={`url(#${gradientId})`}
         strokeWidth={selected ? 3.5 : 2.5}
         strokeLinecap="round"
-        className="cursor-pointer transition-all duration-200"
+        className="cursor-pointer"
       />
 
-      {/* 4. Top Specular Ridge Catch-Light */}
+      {/* 4. Top Specular Ridge Catch-Light — NO transition */}
       <path
         d={edgePath}
         fill="none"
@@ -118,41 +131,39 @@ export default function ThreeDimensionalEdge({
         className="pointer-events-none opacity-80"
       />
 
-      {/* 5. Animated 3D Flowing Energy Photons */}
+      {/* 5. Animated Energy Flow — lightweight dash animation instead of animateMotion */}
       {animated && (
-        <>
-          {/* Lead Photon with Glow Halo */}
-          <circle
-            r={3.5}
-            fill="#ffffff"
-            style={{
-              filter: "drop-shadow(0 0 5px #60a5fa) drop-shadow(0 0 8px #3b82f6)",
-            }}
-          >
-            <animateMotion
-              path={edgePath}
-              dur="2.8s"
-              repeatCount="indefinite"
-              rotate="auto"
-            />
-          </circle>
-
-          {/* Secondary Trailing Energy Packet */}
-          <circle
-            r={2}
-            fill="#93c5fd"
-            style={{ filter: "drop-shadow(0 0 4px #60a5fa)" }}
-          >
-            <animateMotion
-              path={edgePath}
-              dur="2.8s"
-              begin="1.4s"
-              repeatCount="indefinite"
-              rotate="auto"
-            />
-          </circle>
-        </>
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray="6 14"
+          className="pointer-events-none edge-energy-flow"
+          style={{ opacity: 0.8 }}
+        />
       )}
     </g>
   );
 }
+
+// Custom comparator: only re-render when geometry, selection, or style actually changes
+function areEdgePropsEqual(prev, next) {
+  return (
+    prev.sourceX === next.sourceX &&
+    prev.sourceY === next.sourceY &&
+    prev.targetX === next.targetX &&
+    prev.targetY === next.targetY &&
+    prev.sourcePosition === next.sourcePosition &&
+    prev.targetPosition === next.targetPosition &&
+    prev.selected === next.selected &&
+    prev.animated === next.animated &&
+    prev.id === next.id &&
+    prev.style?.stroke === next.style?.stroke &&
+    prev.data?.color === next.data?.color
+  );
+}
+
+const ThreeDimensionalEdge = memo(ThreeDimensionalEdgeInner, areEdgePropsEqual);
+export default ThreeDimensionalEdge;

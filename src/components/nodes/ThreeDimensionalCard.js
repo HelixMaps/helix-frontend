@@ -1,11 +1,63 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import { Position, useReactFlow } from "@xyflow/react";
+import React, { useState, useCallback, useMemo, memo } from "react";
+import { Position } from "@xyflow/react";
 import { use3DTilt } from "@/hooks/use3DTilt";
 import { useMapConfig } from "@/context/MapConfigContext";
 import ThreeDimensionalHandle from "./ThreeDimensionalHandle";
-import { Plus, Check, Clock, Circle, Sparkles, ChevronUp, ChevronDown } from "lucide-react";
+import { Check, Clock, Circle, Sparkles, ChevronUp, ChevronDown } from "lucide-react";
+
+// Node Shape Geometry (Thicker, substantial brick slab proportions)
+const SHAPE_GEOMETRY = {
+  rounded: "rounded-2xl px-5 py-4",
+  pill: "rounded-full px-6 py-3.5",
+  sharp: "rounded-none px-5 py-4",
+  leaf: "rounded-[24px_6px_24px_6px] px-5 py-4",
+  asymmetric: "rounded-[6px_24px_6px_24px] px-5 py-4",
+};
+
+// Theme palettes
+const THEME_CONFIG = {
+  blue: {
+    accent: "#3b82f6",
+    accentLight: "#93c5fd",
+    accentDark: "#1d4ed8",
+    floorGlow: "rgba(59, 130, 246, 0.4)",
+    floorGlowHover: "rgba(59, 130, 246, 0.7)",
+    tagColor: "text-blue-400",
+    powerRail: "bg-blue-500",
+    borderSelected: "border-blue-400 ring-2 ring-blue-500/40",
+    borderResting: "border-zinc-700/80 hover:border-zinc-500",
+    badgeGradient: "from-blue-500/25 via-blue-600/15 to-transparent",
+    badgeBorder: "border-blue-400/40",
+  },
+  emerald: {
+    accent: "#10b981",
+    accentLight: "#6ee7b7",
+    accentDark: "#047857",
+    floorGlow: "rgba(16, 185, 129, 0.4)",
+    floorGlowHover: "rgba(16, 185, 129, 0.7)",
+    tagColor: "text-emerald-400",
+    powerRail: "bg-emerald-500",
+    borderSelected: "border-emerald-400 ring-2 ring-emerald-500/40",
+    borderResting: "border-zinc-700/80 hover:border-zinc-500",
+    badgeGradient: "from-emerald-500/25 via-emerald-600/15 to-transparent",
+    badgeBorder: "border-emerald-400/40",
+  },
+  amber: {
+    accent: "#f59e0b",
+    accentLight: "#fde68a",
+    accentDark: "#b45309",
+    floorGlow: "rgba(245, 158, 11, 0.4)",
+    floorGlowHover: "rgba(245, 158, 11, 0.7)",
+    tagColor: "text-amber-400",
+    powerRail: "bg-amber-500",
+    borderSelected: "border-amber-400 ring-2 ring-amber-500/40",
+    borderResting: "border-zinc-700/80 hover:border-zinc-500",
+    badgeGradient: "from-amber-500/25 via-amber-600/15 to-transparent",
+    badgeBorder: "border-amber-400/40",
+  },
+};
 
 /**
  * ThreeDimensionalCard
@@ -16,7 +68,7 @@ import { Plus, Check, Clock, Circle, Sparkles, ChevronUp, ChevronDown } from "lu
  * - One-click Quick Sprout ("+") to instantly branch a child node
  * - Interactive task status toggle (Todo -> In Progress -> Completed)
  */
-export default function ThreeDimensionalCard({
+function ThreeDimensionalCard({
   id,
   type = "idea",
   label = "",
@@ -32,68 +84,13 @@ export default function ThreeDimensionalCard({
   onLabelKeyDown,
 }) {
   const { nodeShape, viewMode } = useMapConfig();
-  const { setNodes, setEdges } = useReactFlow();
   const is2D = viewMode === "2d" || viewMode === "3d-topdown";
 
   // Interactive 3D tilt with smooth mouse tracking
   const { cardRef, tilt, handlers } = use3DTilt({ maxTilt: 8, scale: 1.02 });
 
-  // Node Shape Geometry (Thicker, substantial brick slab proportions)
-  const shapeGeometry = {
-    rounded: "rounded-2xl px-5 py-4",
-    pill: "rounded-full px-6 py-3.5",
-    sharp: "rounded-none px-5 py-4",
-    leaf: "rounded-[24px_6px_24px_6px] px-5 py-4",
-    asymmetric: "rounded-[6px_24px_6px_24px] px-5 py-4",
-  };
-  const activeShapeClass = shapeGeometry[nodeShape] || shapeGeometry.rounded;
-
-  // Theme palettes
-  const themeConfig = {
-    blue: {
-      accent: "#3b82f6",
-      accentLight: "#93c5fd",
-      accentDark: "#1d4ed8",
-      floorGlow: "rgba(59, 130, 246, 0.4)",
-      floorGlowHover: "rgba(59, 130, 246, 0.7)",
-      tagColor: "text-blue-400",
-      powerRail: "bg-blue-500",
-      borderSelected: "border-blue-400 ring-2 ring-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.35)]",
-      borderResting: "border-zinc-700/80 hover:border-zinc-500",
-      badgeGradient: "from-blue-500/25 via-blue-600/15 to-transparent",
-      badgeBorder: "border-blue-400/40",
-      sproutBg: "bg-blue-600 hover:bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.6)]",
-    },
-    emerald: {
-      accent: "#10b981",
-      accentLight: "#6ee7b7",
-      accentDark: "#047857",
-      floorGlow: "rgba(16, 185, 129, 0.4)",
-      floorGlowHover: "rgba(16, 185, 129, 0.7)",
-      tagColor: "text-emerald-400",
-      powerRail: "bg-emerald-500",
-      borderSelected: "border-emerald-400 ring-2 ring-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.35)]",
-      borderResting: "border-zinc-700/80 hover:border-zinc-500",
-      badgeGradient: "from-emerald-500/25 via-emerald-600/15 to-transparent",
-      badgeBorder: "border-emerald-400/40",
-      sproutBg: "bg-emerald-600 hover:bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]",
-    },
-    amber: {
-      accent: "#f59e0b",
-      accentLight: "#fde68a",
-      accentDark: "#b45309",
-      floorGlow: "rgba(245, 158, 11, 0.4)",
-      floorGlowHover: "rgba(245, 158, 11, 0.7)",
-      tagColor: "text-amber-400",
-      powerRail: "bg-amber-500",
-      borderSelected: "border-amber-400 ring-2 ring-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.35)]",
-      borderResting: "border-zinc-700/80 hover:border-zinc-500",
-      badgeGradient: "from-amber-500/25 via-amber-600/15 to-transparent",
-      badgeBorder: "border-amber-400/40",
-      sproutBg: "bg-amber-600 hover:bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.6)]",
-    },
-  };
-  const theme = themeConfig[accentColor] || themeConfig.blue;
+  const activeShapeClass = SHAPE_GEOMETRY[nodeShape] || SHAPE_GEOMETRY.rounded;
+  const theme = THEME_CONFIG[accentColor] || THEME_CONFIG.blue;
 
   // Task Status Toggle state (todo -> in-progress -> done)
   const [taskStatus, setTaskStatus] = useState("todo"); // 'todo', 'in_progress', 'completed'
@@ -107,46 +104,50 @@ export default function ThreeDimensionalCard({
     });
   }, []);
 
-  // Quick Sprout: Spawn a connected child node instantly
-  const handleQuickSprout = useCallback(
-    (e, childType = type) => {
-      e.stopPropagation();
-      const newId = `${childType}-${Date.now()}`;
+  // 3D Brick Depth & Extruded Thickness Below Deck — memoized
+  const brickBoxShadow = useMemo(() => {
+    if (is2D) {
+      return selected
+        ? `0 0 0 2px ${theme.accent}, 0 4px 14px rgba(0, 0, 0, 0.7), 0 0 16px ${theme.floorGlow}`
+        : "0 2px 0 0 #181920, 0 4px 12px rgba(0, 0, 0, 0.6), 0 8px 20px rgba(0, 0, 0, 0.4)";
+    }
 
-      setNodes((nds) => {
-        const parent = nds.find((n) => n.id === id);
-        const parentPos = parent ? parent.position : { x: 250, y: 150 };
+    const groundShadow = selected
+      ? `0 26px 44px -4px rgba(0, 0, 0, 0.95), 0 0 28px 4px ${theme.floorGlow}`
+      : tilt.isHovered
+      ? "0 30px 48px -6px rgba(0, 0, 0, 0.95), 0 14px 24px rgba(0, 0, 0, 0.85)"
+      : "0 20px 32px -4px rgba(0, 0, 0, 0.9), 0 8px 16px rgba(0, 0, 0, 0.8)";
 
-        // Position child slightly to the right with slight vertical offset
-        const childNode = {
-          id: newId,
-          type: childType,
-          position: {
-            x: parentPos.x + 280,
-            y: parentPos.y + (Math.random() * 80 - 40),
-          },
-          data: {
-            label: `New ${childType.charAt(0).toUpperCase() + childType.slice(1)}`,
-            elevation: parent?.data?.elevation || 45,
-          },
-        };
-        return nds.concat(childNode);
-      });
-
-      // Automatically connect parent to child with 3D edge
-      setEdges((eds) =>
-        eds.concat({
-          id: `edge-${id}-${newId}`,
-          source: id,
-          target: newId,
-          type: "threeDimensional",
-          animated: true,
-          style: { stroke: theme.accent, strokeWidth: 2.5 },
-        })
-      );
-    },
-    [id, type, theme.accent, setNodes, setEdges]
-  );
+    return [
+      // Top surface inner specular bevel highlight
+      "inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.45)",
+      "inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.6)",
+      // Top perimeter subtle catch line
+      "0 0.5px 0 0 rgba(255, 255, 255, 0.15)",
+      // 14px Solid Tangible Brick Extrusion (Vertical thickness below the card)
+      "0 1px 0 #242732",
+      "0 2px 0 #21232d",
+      "0 3px 0 #1e2028",
+      "0 4px 0 #1b1d24",
+      "0 5px 0 #181a20",
+      "0 6px 0 #16171d",
+      "0 7px 0 #14151a",
+      "0 8px 0 #121317",
+      "0 9px 0 #101115",
+      "0 10px 0 #0e0f13",
+      "0 11px 0 #0c0d11",
+      "0 12px 0 #0a0b0f",
+      "0 13px 0 #08090d",
+      "0 14px 0 #06070a",
+      // Bottom bevel rim catch line
+      "0 14.5px 0 0 rgba(255, 255, 255, 0.12)",
+      // Bottom accent power trim along the brick base
+      `0 15px 0 0 ${theme.accentDark || theme.accent}`,
+      // Ambient neon underglow reflecting off the canvas floor
+      `0 16px 14px -2px ${selected ? theme.floorGlowHover : theme.floorGlow}`,
+      groundShadow,
+    ].join(", ");
+  }, [is2D, selected, tilt.isHovered, theme]);
 
   return (
     <div
@@ -167,69 +168,35 @@ export default function ThreeDimensionalCard({
       }}
     >
       {/* ─────────────────────────────────────────────────────────────
-          1. 3D BRICK GROUND CONTACT SHADOW (Floor plane at Z=0)
+          1. 3D BRICK GROUND CONTACT SHADOW & FLOOR GLOW (Floor plane at Z=0)
          ───────────────────────────────────────────────────────────── */}
       {!is2D && (
         <div
           className={`absolute inset-0 ${activeShapeClass} pointer-events-none transition-all duration-300`}
           style={{
-            transform: "translateZ(0px)",
+            transform: "translateZ(0px) translateY(8px)",
             boxShadow: selected
-              ? `0 20px 40px -4px rgba(0, 0, 0, 0.95), 0 0 28px 4px ${theme.floorGlow}`
+              ? `0 24px 44px -4px rgba(0, 0, 0, 0.95), 0 0 32px 6px ${theme.floorGlow}`
               : tilt.isHovered
-              ? "0 26px 48px -6px rgba(0, 0, 0, 0.95), 0 10px 22px rgba(0, 0, 0, 0.85)"
-              : "0 14px 28px -4px rgba(0, 0, 0, 0.9), 0 6px 14px rgba(0, 0, 0, 0.8)",
+              ? "0 28px 48px -6px rgba(0, 0, 0, 0.95), 0 12px 24px rgba(0, 0, 0, 0.85)"
+              : "0 16px 28px -4px rgba(0, 0, 0, 0.9), 0 8px 16px rgba(0, 0, 0, 0.8)",
           }}
         />
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          2. SOLID 3D BRICK SLAB EXTRUSION (Physical 3D Slices: Z=0 to Z=14px)
-          Creates a continuous, tangible physical brick slab in 3D space
+          2. 3D SUB-SURFACE SLAB BASE (Physical 3D Foundation at Z=4px)
          ───────────────────────────────────────────────────────────── */}
       {!is2D && (
-        <>
-          {/* Base plate at Z=0 */}
-          <div
-            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-900/90`}
-            style={{
-              background: "#090a0d",
-              transform: "translateZ(0px)",
-            }}
-          />
-          {/* Extrusion slice 1 at Z=3.5px */}
-          <div
-            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-850/80`}
-            style={{
-              background: "#0c0d12",
-              transform: "translateZ(3.5px)",
-            }}
-          />
-          {/* Extrusion slice 2 at Z=7px */}
-          <div
-            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-800/70`}
-            style={{
-              background: "#101117",
-              transform: "translateZ(7px)",
-            }}
-          />
-          {/* Extrusion slice 3 at Z=10.5px */}
-          <div
-            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-750/60`}
-            style={{
-              background: "#14161d",
-              transform: "translateZ(10.5px)",
-            }}
-          />
-          {/* Extrusion slice 4 at Z=14px */}
-          <div
-            className={`absolute inset-0 ${activeShapeClass} pointer-events-none border border-zinc-700/60`}
-            style={{
-              background: "#181a23",
-              transform: "translateZ(14px)",
-            }}
-          />
-        </>
+        <div
+          className={`absolute inset-0 ${activeShapeClass} pointer-events-none transition-all duration-200`}
+          style={{
+            background: "#090a0d",
+            transform: "translateZ(4px) translateY(4px)",
+            border: "1px solid rgba(255, 255, 255, 0.05)",
+            boxShadow: `0 8px 16px -2px rgba(0, 0, 0, 0.9), 0 0 16px ${theme.floorGlow}`,
+          }}
+        />
       )}
 
       {/* ─────────────────────────────────────────────────────────────
@@ -241,27 +208,19 @@ export default function ThreeDimensionalCard({
         }`}
         style={{
           background:
-            "linear-gradient(150deg, #1b1c24 0%, #13141a 55%, #0d0e13 100%)",
+            "linear-gradient(150deg, #1c1d25 0%, #13141a 55%, #0d0e13 100%)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           transformStyle: "preserve-3d",
           transform: is2D ? "none" : "translateZ(16px)",
-          boxShadow: is2D
-            ? selected
-              ? `0 0 0 2px ${theme.accent}, 0 4px 14px rgba(0, 0, 0, 0.7), 0 0 16px ${theme.floorGlow}`
-              : "0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 18px rgba(0, 0, 0, 0.45)"
-            : `
-              /* Top micro-chamfer specular highlight */
-              inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.45),
-              /* Bottom inner bevel depth */
-              inset 0 -2px 4px 0 rgba(0, 0, 0, 0.7),
-              /* Top rim catch line */
-              0 1px 0 0 rgba(255, 255, 255, 0.15)
-            `,
+          boxShadow: brickBoxShadow,
         }}
       >
         {/* Micro-chamfer Top Catch Line */}
         <div className="pointer-events-none absolute top-0 left-3 right-3 h-[1.5px] bg-gradient-to-r from-transparent via-white/45 to-transparent z-10" />
+
+        {/* Micro-chamfer Bottom Edge Reflection */}
+        <div className="pointer-events-none absolute bottom-0 left-3 right-3 h-[1px] bg-gradient-to-r from-transparent via-white/15 to-transparent z-10" />
 
         {/* Illuminated Left Edge Power Rail */}
         <div
@@ -404,18 +363,10 @@ export default function ThreeDimensionalCard({
           accentColor={accentColor}
         />
 
-        {/* ─────────────────────────────────────────────────────────────
-            2. ONE-CLICK QUICK SPROUT BUTTON ("+")
-            Floats on the right edge on hover/selection to spawn branches
-           ───────────────────────────────────────────────────────────── */}
-        <button
-          onClick={(e) => handleQuickSprout(e, type)}
-          className={`absolute -right-3.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-white cursor-pointer transition-all duration-200 z-30 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-75 hover:!scale-125 ${theme.sproutBg}`}
-          title="Quick Sprout: Click to branch a child node instantly"
-        >
-          <Plus size={11} className="stroke-[3]" />
-        </button>
+
       </div>
     </div>
   );
 }
+
+export default memo(ThreeDimensionalCard);

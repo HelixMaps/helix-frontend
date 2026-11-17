@@ -187,7 +187,7 @@ export default function NodeSearchBar({ nodes, onSearch, onClear, activeSearch }
   return (
     <>
       {/* ── Top-right toolbar ── */}
-      <div className="fixed top-5 right-5 z-[200] flex items-center gap-2">
+      <div className="absolute top-5 right-5 z-[200] flex items-center gap-2 pointer-events-auto">
         {/* Active search badge */}
         {activeSearch && (
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900/90 border border-zinc-800 rounded-full text-xs text-zinc-300 backdrop-blur-sm shadow-lg animate-in fade-in slide-in-from-right-3 duration-200">

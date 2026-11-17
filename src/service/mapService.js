@@ -74,11 +74,11 @@ export const fetchMap = async (token, id) => {
  * @param {string|null} parentMapId - Optional parent map ID
  * @param {string|null} parentNodeId - Optional parent node ID
  */
-export const createMap = async (token, title, parentMapId = null, parentNodeId = null) => {
+export const createMap = async (token, title, parentMapId = null, parentNodeId = null, initialData = {}) => {
   const res = await fetch(`${API_BASE_URL}/maps`, {
     method: "POST",
     headers: getHeaders(token),
-    body: JSON.stringify({ title, parentMapId, parentNodeId }),
+    body: JSON.stringify({ title, parentMapId, parentNodeId, ...initialData }),
   });
 
   if (!res.ok) {

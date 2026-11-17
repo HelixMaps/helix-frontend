@@ -1,13 +1,38 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { Handle } from "@xyflow/react";
 
 /**
  * ThreeDimensionalHandle
  * Renders a tactile 3D metallic optical port socket for node connection points.
  */
-export default function ThreeDimensionalHandle({
+const ACCENT_PALETTES = {
+  blue: {
+    core: "bg-blue-400",
+    glow: "rgba(59, 130, 246, 0.6)",
+    ring: "border-blue-400/40",
+    activeRing: "hover:border-blue-300",
+  },
+  emerald: {
+    core: "bg-emerald-400",
+    glow: "rgba(16, 185, 129, 0.6)",
+    ring: "border-emerald-400/40",
+    activeRing: "hover:border-emerald-300",
+  },
+  amber: {
+    core: "bg-amber-400",
+    glow: "rgba(245, 158, 11, 0.6)",
+    ring: "border-amber-400/40",
+    activeRing: "hover:border-amber-300",
+  },
+};
+
+/**
+ * ThreeDimensionalHandle
+ * Renders a tactile 3D metallic optical port socket for node connection points.
+ */
+function ThreeDimensionalHandle({
   type,
   position,
   id,
@@ -15,28 +40,7 @@ export default function ThreeDimensionalHandle({
   className = "",
   style = {},
 }) {
-  const accentPalettes = {
-    blue: {
-      core: "bg-blue-400",
-      glow: "rgba(59, 130, 246, 0.6)",
-      ring: "border-blue-400/40",
-      activeRing: "hover:border-blue-300",
-    },
-    emerald: {
-      core: "bg-emerald-400",
-      glow: "rgba(16, 185, 129, 0.6)",
-      ring: "border-emerald-400/40",
-      activeRing: "hover:border-emerald-300",
-    },
-    amber: {
-      core: "bg-amber-400",
-      glow: "rgba(245, 158, 11, 0.6)",
-      ring: "border-amber-400/40",
-      activeRing: "hover:border-amber-300",
-    },
-  };
-
-  const palette = accentPalettes[accentColor] || accentPalettes.blue;
+  const palette = ACCENT_PALETTES[accentColor] || ACCENT_PALETTES.blue;
 
   return (
     <Handle
@@ -56,3 +60,5 @@ export default function ThreeDimensionalHandle({
     </Handle>
   );
 }
+
+export default memo(ThreeDimensionalHandle);

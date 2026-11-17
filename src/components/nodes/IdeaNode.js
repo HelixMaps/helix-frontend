@@ -1,31 +1,35 @@
 "use client";
 
-import React from "react";
+import React, { memo, useCallback } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { Lightbulb } from "lucide-react";
 import ThreeDimensionalCard from "./ThreeDimensionalCard";
 
-export default function IdeaNode({ id, data, selected }) {
+function IdeaNode({ id, data, selected }) {
   const { setNodes } = useReactFlow();
 
-  const onChange = (e) => {
-    setNodes((nds) =>
-      nds.map((n) => {
-        if (n.id === id) {
-          return {
-            ...n,
-            data: {
-              ...n.data,
-              label: e.target.value,
-            },
-          };
-        }
-        return n;
-      })
-    );
-  };
+  const onChange = useCallback(
+    (e) => {
+      const newLabel = e.target.value;
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id === id) {
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                label: newLabel,
+              },
+            };
+          }
+          return n;
+        })
+      );
+    },
+    [id, setNodes]
+  );
 
-  const onBlur = () => {
+  const onBlur = useCallback(() => {
     setNodes((nds) =>
       nds.map((n) => {
         if (n.id === id) {
@@ -40,14 +44,17 @@ export default function IdeaNode({ id, data, selected }) {
         return n;
       })
     );
-  };
+  }, [id, setNodes]);
 
-  const handleKeyDown = (e) => {
-    e.stopPropagation();
-    if (e.key === "Enter") {
-      onBlur();
-    }
-  };
+  const handleKeyDown = useCallback(
+    (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        onBlur();
+      }
+    },
+    [onBlur]
+  );
 
   return (
     <ThreeDimensionalCard
@@ -66,3 +73,5 @@ export default function IdeaNode({ id, data, selected }) {
     />
   );
 }
+
+export default memo(IdeaNode);

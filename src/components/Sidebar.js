@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Box,
   Share2,
+  Download,
   Sparkles
 } from "lucide-react";
 import { SignInButton, SignUpButton, Show, UserButton, useUser } from "@clerk/nextjs";
@@ -118,7 +119,8 @@ export default function Sidebar({
   token,
   onUpdateStyleConfig,
   isGuest,
-  onShareSession
+  onShareSession,
+  onExportSession
 }) {
   const { user } = useUser();
   const { 
@@ -247,6 +249,15 @@ export default function Sidebar({
                   title="Share Mind Map"
                 >
                   <Share2 size={14} />
+                </button>
+              )}
+              {onExportSession && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onExportSession(session); }}
+                  className="p-1.5 rounded-md hover:bg-zinc-700/50 text-zinc-500 hover:text-emerald-400 cursor-pointer transition-colors"
+                  title="Export Snapshot (PDF / Image)"
+                >
+                  <Download size={14} />
                 </button>
               )}
               <button
