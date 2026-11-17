@@ -9,7 +9,11 @@ import {
   Check, 
   X, 
   Settings,
-  ChevronDown
+  ChevronDown,
+  Box,
+  Share2,
+  Download,
+  Sparkles
 } from "lucide-react";
 import { SignInButton, SignUpButton, Show, UserButton, useUser } from "@clerk/nextjs";
 import { shadesOfPurple } from "@clerk/themes";
@@ -114,10 +118,21 @@ export default function Sidebar({
   onOpenSearch,
   token,
   onUpdateStyleConfig,
-  isGuest
+  isGuest,
+  onShareSession,
+  onExportSession
 }) {
   const { user } = useUser();
-  const { nodeShape, changeNodeShape, edgeStyle, changeEdgeStyle } = useMapConfig();
+  const { 
+    nodeShape, 
+    changeNodeShape, 
+    edgeStyle, 
+    changeEdgeStyle,
+    viewMode,
+    changeViewMode,
+    enableParallax,
+    toggleParallax,
+  } = useMapConfig();
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
@@ -227,6 +242,24 @@ export default function Sidebar({
                   <Pin size={14} />
                 )}
               </button>
+              {onShareSession && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onShareSession(session); }}
+                  className="p-1.5 rounded-md hover:bg-zinc-700/50 text-zinc-500 hover:text-blue-400 cursor-pointer transition-colors"
+                  title="Share Mind Map"
+                >
+                  <Share2 size={14} />
+                </button>
+              )}
+              {onExportSession && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onExportSession(session); }}
+                  className="p-1.5 rounded-md hover:bg-zinc-700/50 text-zinc-500 hover:text-emerald-400 cursor-pointer transition-colors"
+                  title="Export Snapshot (PDF / Image)"
+                >
+                  <Download size={14} />
+                </button>
+              )}
               <button
                 onClick={(e) => startEditing(e, session)}
                 className="p-1.5 rounded-md hover:bg-zinc-700/50 text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
@@ -379,6 +412,54 @@ export default function Sidebar({
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* 3D Spatial Mode Selector */}
+            <div className="flex flex-col gap-2 pt-1 border-t border-zinc-800/60">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">3D Spatial View</label>
+                <span className="text-[8px] font-mono font-bold bg-blue-500/10 text-blue-400 px-1 py-0.5 rounded border border-blue-500/20">3D</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 bg-zinc-950 p-1 rounded-lg border border-zinc-800/80">
+                <button
+                  onClick={() => changeViewMode("3d")}
+                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    viewMode === "3d" || viewMode === "3d-perspective"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                  title="3D Spatial: Infinite space without boundaries"
+                >
+                  <Box size={12} />
+                  <span>3D Spatial</span>
+                </button>
+                <button
+                  onClick={() => changeViewMode("2d")}
+                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    viewMode === "2d" || viewMode === "3d-topdown"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                  title="2D Canvas: Classic dotted canvas grid"
+                >
+                  <span>2D Canvas</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Parallax Cursor Reaction */}
+            <div className="flex items-center justify-between px-1 pt-1 border-t border-zinc-800/60">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Cursor Parallax</span>
+              <button
+                onClick={toggleParallax}
+                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold cursor-pointer transition-colors ${
+                  enableParallax
+                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/30"
+                    : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                }`}
+              >
+                {enableParallax ? "ON" : "OFF"}
+              </button>
             </div>
           </div>
         )}

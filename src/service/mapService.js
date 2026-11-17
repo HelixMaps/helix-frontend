@@ -74,11 +74,11 @@ export const fetchMap = async (token, id) => {
  * @param {string|null} parentMapId - Optional parent map ID
  * @param {string|null} parentNodeId - Optional parent node ID
  */
-export const createMap = async (token, title, parentMapId = null, parentNodeId = null) => {
+export const createMap = async (token, title, parentMapId = null, parentNodeId = null, initialData = {}) => {
   const res = await fetch(`${API_BASE_URL}/maps`, {
     method: "POST",
     headers: getHeaders(token),
-    body: JSON.stringify({ title, parentMapId, parentNodeId }),
+    body: JSON.stringify({ title, parentMapId, parentNodeId, ...initialData }),
   });
 
   if (!res.ok) {
@@ -183,5 +183,25 @@ export const searchMapsAndNodes = async (token, query) => {
   return result.results;
 };
 
+/**
+ * Fetch details of a public shared map (no authentication required)
+ * @param {string} id - Map ID
+ */
+export const fetchSharedMap = async (id) => {
+  if (!id) throw new Error("Map ID is required");
 
+  const res = await fetch(`${API_BASE_URL}/maps/shared/${id}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to load shared mind map");
+  }
+
+  const result = await res.json();
+  return result.data;
+};

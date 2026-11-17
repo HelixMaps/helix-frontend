@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import { Trash2, Edit2 } from "lucide-react";
+import { Trash2, Edit2, ArrowUp, ArrowDown } from "lucide-react";
+import { useReactFlow } from "@xyflow/react";
 
 export default function ContextMenu({ id, x, y, node, onClickOutside, onDelete, onEdit }) {
   const ref = useRef(null);
@@ -54,12 +55,41 @@ export default function ContextMenu({ id, x, y, node, onClickOutside, onDelete, 
     label: "Node",
   };
 
+  const { setNodes } = useReactFlow();
+
+  const handleElevate = () => {
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === id
+          ? { ...n, data: { ...n.data, elevation: (n.data?.elevation || 45) + 25 } }
+          : n
+      )
+    );
+    onClickOutside();
+  };
+
+  const handleDescend = () => {
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === id
+          ? { ...n, data: { ...n.data, elevation: Math.max(15, (n.data?.elevation || 45) - 25) } }
+          : n
+      )
+    );
+    onClickOutside();
+  };
+
   return (
     <div
       ref={ref}
-      style={{ top: y, left: x }}
+      style={{
+        top: y,
+        left: x,
+        boxShadow:
+          "0 4px 0 0 #18181b, 0 24px 48px -4px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+      }}
       onContextMenu={handleContextMenu}
-      className="fixed z-[9999] min-w-[180px] bg-zinc-900/90 backdrop-blur-md border border-zinc-800/80 rounded-xl shadow-2xl shadow-black/80 py-1.5 animate-in fade-in zoom-in-95 duration-100 select-none cursor-default"
+      className="fixed z-[9999] min-w-[185px] bg-zinc-950/95 backdrop-blur-xl border border-zinc-700/80 rounded-2xl py-2 animate-in fade-in zoom-in-95 duration-100 select-none cursor-default"
     >
       {/* Node Info Header */}
       <div className="px-3 py-2 flex flex-col gap-0.5 border-b border-zinc-800/50 mb-1">
@@ -79,6 +109,20 @@ export default function ContextMenu({ id, x, y, node, onClickOutside, onDelete, 
         >
           <Edit2 size={13.5} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
           <span>Edit Title</span>
+        </button>
+        <button
+          onClick={handleElevate}
+          className="w-full px-2.5 py-1.5 text-left text-xs font-medium text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 flex items-center gap-2.5 transition-all duration-150 rounded-lg cursor-pointer group"
+        >
+          <ArrowUp size={13.5} className="text-zinc-500 group-hover:text-blue-400 transition-colors" />
+          <span>Levitate Higher (+Z)</span>
+        </button>
+        <button
+          onClick={handleDescend}
+          className="w-full px-2.5 py-1.5 text-left text-xs font-medium text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 flex items-center gap-2.5 transition-all duration-150 rounded-lg cursor-pointer group"
+        >
+          <ArrowDown size={13.5} className="text-zinc-500 group-hover:text-blue-400 transition-colors" />
+          <span>Descend Lower (-Z)</span>
         </button>
         <button
           onClick={() => onDelete(id)}

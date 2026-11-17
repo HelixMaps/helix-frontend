@@ -1,13 +1,29 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
-import { Menu, X, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useEffect, Suspense, useCallback } from "react";
+import { Menu, X, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import SearchModal from "@/components/SearchModal";
+import ShareModal from "@/components/ShareModal";
+import CreateMapModal from "@/components/CreateMapModal";
 import FlowCanvas from "@/components/FlowCanvas";
 import { fetchProjects, createMap, updateMap, deleteMap } from "@/service/mapService";
+
+// Helper to determine if a map is untouched / empty (initial default state)
+const isMapUnmodified = (map) => {
+  if (!map) return true;
+  const nodes = map.nodes || [];
+  const edges = map.edges || [];
+  if (edges.length > 0) return false;
+  if (nodes.length !== 1) return false;
+  const root = nodes[0];
+  if (Math.round(root.position?.x) !== 250 || Math.round(root.position?.y) !== 150) return false;
+  if (root.data?.label && root.data.label !== map.title && root.data.label !== "Central Idea") return false;
+  if (root.data?.summary && root.data.summary.trim() !== "") return false;
+  return true;
+};
 
 function DashboardContent() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
@@ -18,10 +34,15 @@ function DashboardContent() {
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareTargetMap, setShareTargetMap] = useState(null);
+  const [triggerExportCount, setTriggerExportCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   // 1. Redirect to Sign In if signed out and not guest
   useEffect(() => {
@@ -41,19 +62,19 @@ function DashboardContent() {
           {
             id: "root-1",
             type: "idea",
-            data: { label: "Central Idea" },
+            data: { label: "Central Idea", elevation: 60 },
             position: { x: 250, y: 150 },
           },
           {
             id: "child-1",
             type: "task",
-            data: { label: "Define Requirements" },
+            data: { label: "Define Requirements", elevation: 35 },
             position: { x: 100, y: 300 },
           },
           {
             id: "child-2",
             type: "resource",
-            data: { label: "React Flow Docs" },
+            data: { label: "React Flow Docs", elevation: 85 },
             position: { x: 400, y: 300 },
           },
         ],
@@ -89,23 +110,43 @@ function DashboardContent() {
     const loadSessions = async () => {
       try {
         setIsLoading(true);
+        setLoadError(null);
         const token = await getToken();
         if (!token) return;
         
         const data = await fetchProjects(token);
-        setSessions(data);
-        if (data.length > 0) {
+        setSessions(data || []);
+        if (data && data.length > 0) {
           // Load first pinned map or just the first map in list
           const active = data.find((s) => s.isPinned) || data[0];
           setActiveSessionId(active._id);
         } else {
-          // If the user has no mind maps, create a default one
-          const defaultMap = await createMap(token, "My First Mind Map");
-          setSessions([defaultMap]);
-          setActiveSessionId(defaultMap._id);
+          // If the user has no mind maps, create a default draft (not stored in DB until changed)
+          const defaultDraft = {
+            _id: `draft-${Date.now()}`,
+            title: "My First Mind Map",
+            isDraft: true,
+            isPinned: false,
+            nodes: [
+              {
+                id: `root-${Date.now()}`,
+                type: "idea",
+                data: { label: "Central Idea", elevation: 60 },
+                position: { x: 250, y: 150 },
+              }
+            ],
+            edges: [],
+            styleConfig: {
+              nodeShape: "rounded",
+              edgeStyle: "smoothstep"
+            }
+          };
+          setSessions([defaultDraft]);
+          setActiveSessionId(defaultDraft._id);
         }
       } catch (err) {
         console.error("Error loading mind maps:", err);
+        setLoadError(err?.message || "Failed to load mind maps from backend database");
       } finally {
         setIsLoading(false);
       }
@@ -126,46 +167,54 @@ function DashboardContent() {
   }, []);
 
   const handleSelectSession = (id) => {
+    setSessions((prev) => {
+      const activeSession = prev.find((s) => s._id === activeSessionId);
+      // Discard active draft if it was never modified
+      if (activeSession?.isDraft && isMapUnmodified(activeSession) && activeSession._id !== id) {
+        return prev.filter((s) => s._id !== activeSession._id);
+      }
+      return prev;
+    });
     setActiveSessionId(id);
     setIsMobileSidebarOpen(false);
   };
 
-  const handleCreateSession = async () => {
-    if (isGuest) {
-      const newMap = {
-        _id: `local-${Date.now()}`,
-        title: `Untitled Mind Map ${sessions.length + 1}`,
-        isPinned: false,
-        nodes: [
-          {
-            id: "root-1",
-            type: "idea",
-            data: { label: "Central Idea" },
-            position: { x: 250, y: 150 },
-          }
-        ],
-        edges: [],
-        styleConfig: {
-          nodeShape: "rounded",
-          edgeStyle: "smoothstep"
-        }
-      };
-      setSessions((prev) => [newMap, ...prev]);
-      setActiveSessionId(newMap._id);
-      setIsMobileSidebarOpen(false);
-      return;
-    }
+  // Opens the New Mind Map Modal
+  const handleCreateSession = () => {
+    setIsCreateModalOpen(true);
+  };
 
-    try {
-      const token = await getToken();
-      if (!token) return;
-      const newMap = await createMap(token, `Untitled Mind Map ${sessions.length + 1}`);
-      setSessions((prev) => [newMap, ...prev]);
-      setActiveSessionId(newMap._id);
-      setIsMobileSidebarOpen(false);
-    } catch (err) {
-      console.error("Error creating map:", err);
-    }
+  // Called when user confirms title in New Mind Map Modal
+  const handleConfirmCreateMap = (chosenTitle) => {
+    const title = chosenTitle?.trim() || "Untitled Mind Map";
+    const draftId = `draft-${Date.now()}`;
+    const initialNode = {
+      id: `root-${Date.now()}`,
+      type: "idea",
+      data: { label: title, summary: "", elevation: 60 },
+      position: { x: 250, y: 150 },
+    };
+    const newDraftMap = {
+      _id: draftId,
+      title,
+      isDraft: true,
+      isPinned: false,
+      nodes: [initialNode],
+      edges: [],
+      styleConfig: {
+        nodeShape: "rounded",
+        edgeStyle: "smoothstep"
+      }
+    };
+
+    // Replace any previous unmodified empty drafts
+    setSessions((prev) => [
+      newDraftMap,
+      ...prev.filter((s) => !s.isDraft || !isMapUnmodified(s))
+    ]);
+    setActiveSessionId(draftId);
+    setIsCreateModalOpen(false);
+    setIsMobileSidebarOpen(false);
   };
 
   const handleRenameSession = async (id, newTitle) => {
@@ -173,7 +222,7 @@ function DashboardContent() {
     setSessions((prev) =>
       prev.map((s) => (s._id === id ? { ...s, title: newTitle } : s))
     );
-    if (isGuest) return;
+    if (isGuest || id?.startsWith("draft-")) return;
 
     try {
       const token = await getToken();
@@ -190,7 +239,7 @@ function DashboardContent() {
 
   const handleConfirmDelete = async () => {
     if (deleteTargetId) {
-      if (isGuest) {
+      if (isGuest || deleteTargetId?.startsWith("draft-")) {
         setSessions((prev) => {
           const filtered = prev.filter((s) => s._id !== deleteTargetId);
           if (activeSessionId === deleteTargetId) {
@@ -232,7 +281,7 @@ function DashboardContent() {
     setSessions((prev) =>
       prev.map((s) => (s._id === id ? { ...s, isPinned: nextPinned } : s))
     );
-    if (isGuest) return;
+    if (isGuest || id?.startsWith("draft-")) return;
 
     try {
       const token = await getToken();
@@ -246,7 +295,7 @@ function DashboardContent() {
   const handleUpdateStyleConfig = async (newStyleConfig) => {
     if (!activeSessionId) return;
     try {
-      const activeSession = sessions.find(s => s._id === activeSessionId);
+      const activeSession = sessions.find((s) => s._id === activeSessionId);
       const isChanged = !activeSession || 
         activeSession.styleConfig?.nodeShape !== newStyleConfig.nodeShape ||
         activeSession.styleConfig?.edgeStyle !== newStyleConfig.edgeStyle;
@@ -259,7 +308,7 @@ function DashboardContent() {
               : s
           )
         );
-        if (isGuest) return;
+        if (isGuest || activeSessionId?.startsWith("draft-")) return;
 
         const token = await getToken();
         if (!token) return;
@@ -330,11 +379,43 @@ function DashboardContent() {
           token={null} /* Deprecated, getToken is used dynamically */
           onUpdateStyleConfig={handleUpdateStyleConfig}
           isGuest={isGuest}
+          onShareSession={async (s) => {
+            let target = s;
+            if (s?.isDraft || s?._id?.startsWith("draft-")) {
+              try {
+                const token = await getToken();
+                if (token) {
+                  const savedMap = await createMap(token, s.title, null, null, {
+                    nodes: s.nodes || [],
+                    edges: s.edges || [],
+                    styleConfig: s.styleConfig
+                  });
+                  setSessions((prev) =>
+                    prev.map((item) => (item._id === s._id ? { ...savedMap, isDraft: false } : item))
+                  );
+                  if (activeSessionId === s._id) {
+                    setActiveSessionId(savedMap._id);
+                  }
+                  target = savedMap;
+                }
+              } catch (e) {
+                console.error("Failed to persist map for sharing:", e);
+              }
+            }
+            setShareTargetMap(target);
+            setIsShareModalOpen(true);
+          }}
+          onExportSession={(s) => {
+            if (s._id !== activeSessionId) {
+              setActiveSessionId(s._id);
+            }
+            setTriggerExportCount((c) => c + 1);
+          }}
         />
       </div>
 
       {/* ── 3. Main workspace ── */}
-      <main className="flex-1 h-full relative overflow-hidden bg-zinc-950">
+      <main className="flex-1 h-full relative overflow-hidden bg-[#141414]">
         {/* Desktop sidebar collapse toggle */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -344,13 +425,72 @@ function DashboardContent() {
           {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
 
+        {/* Diagnostic Error State if backend or MongoDB fails to load */}
+        {loadError && sessions.length === 0 && !isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center p-4 bg-[#141414] select-none z-20">
+            <div className="max-w-md w-full bg-zinc-950/95 border border-red-500/30 rounded-2xl p-6 shadow-[0_0_50px_rgba(239,68,68,0.15)] text-center">
+              <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mx-auto flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                <AlertTriangle size={22} />
+              </div>
+              <h2 className="text-base font-bold text-zinc-100">Database Connection Failed</h2>
+              <div className="text-xs text-red-300 font-mono mt-2.5 p-2.5 bg-red-950/40 border border-red-900/60 rounded-xl text-left break-words">
+                {loadError}
+              </div>
+              <p className="text-xs text-zinc-400 mt-3 leading-relaxed">
+                Ensure <code className="text-zinc-200 bg-zinc-900 px-1 py-0.5 rounded">MONGO_URI</code> and <code className="text-zinc-200 bg-zinc-900 px-1 py-0.5 rounded">CLERK_SECRET_KEY</code> are configured in <code className="text-zinc-200 bg-zinc-900 px-1 py-0.5 rounded">helix-backend/.env</code>.
+              </p>
+              <div className="mt-5 flex items-center justify-center gap-3">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
+                >
+                  <RefreshCw size={13} />
+                  <span>Retry Connection</span>
+                </button>
+                <button
+                  onClick={() => router.push("/dashboard?try=true")}
+                  className="px-4 py-2 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-zinc-300 text-xs font-semibold transition-all cursor-pointer border border-zinc-750"
+                >
+                  Open Sandbox
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSessionId && (
           <FlowCanvas 
             activeSessionId={activeSessionId} 
+            setActiveSessionId={setActiveSessionId}
             getToken={getToken} 
             isGuest={isGuest}
             sessions={sessions}
             setSessions={setSessions}
+            triggerExport={triggerExportCount}
+            onShare={async () => {
+              let active = sessions.find((s) => s._id === activeSessionId) || sessions[0];
+              if (active?.isDraft || active?._id?.startsWith("draft-")) {
+                try {
+                  const token = await getToken();
+                  if (token) {
+                    const savedMap = await createMap(token, active.title, null, null, {
+                      nodes: active.nodes || [],
+                      edges: active.edges || [],
+                      styleConfig: active.styleConfig
+                    });
+                    setSessions((prev) =>
+                      prev.map((item) => (item._id === active._id ? { ...savedMap, isDraft: false } : item))
+                    );
+                    setActiveSessionId(savedMap._id);
+                    active = savedMap;
+                  }
+                } catch (e) {
+                  console.error("Failed to persist map for sharing:", e);
+                }
+              }
+              setShareTargetMap(active);
+              setIsShareModalOpen(true);
+            }}
           />
         )}
       </main>
@@ -361,6 +501,20 @@ function DashboardContent() {
         onClose={() => setIsSearchOpen(false)}
         sessions={sessions}
         onSelectSession={handleSelectSession}
+      />
+
+      {/* ── 5. Share Mind Map Modal ── */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        activeMap={shareTargetMap || sessions.find((s) => s._id === activeSessionId) || sessions[0]}
+      />
+
+      {/* ── 6. Create Mind Map Modal ── */}
+      <CreateMapModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleConfirmCreateMap}
       />
 
       {/* ── 5. Delete Confirmation Modal ── */}
