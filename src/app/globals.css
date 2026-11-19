@@ -84,13 +84,14 @@ svg.react-flow__edges {
 }
 
 /* ── Edge energy flow dash animation ─────────────────────────────────── */
-@keyframes edge-dash-flow {
-  to { stroke-dashoffset: -40; }
+@keyframes edge-flow {
+  to {
+    stroke-dashoffset: -26;
+  }
 }
 
 .edge-energy-flow {
-  animation: edge-dash-flow 1.6s linear infinite;
-  will-change: stroke-dashoffset;
+  animation: edge-flow 1.2s linear infinite;
 }
 
 /* ── 3D Node Specular Gleam animation ────────────────────────────────── */
