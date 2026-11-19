@@ -357,108 +357,164 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Map Style Configuration */}
-      <div className="px-3 border-t border-zinc-800/40 py-3 shrink-0 flex flex-col gap-2 bg-zinc-950/20">
+{/* Map Style Configuration */}
+      <div className="px-3 py-3 border-t border-white/[0.06] shrink-0 flex flex-col gap-1.5 bg-transparent select-none">
         <button
           onClick={() => setIsConfigOpen(!isConfigOpen)}
-          className="inline-flex items-center justify-between rounded-md text-sm font-medium transition-colors hover:bg-zinc-800/40 hover:text-zinc-50 h-9 px-3 py-2 text-zinc-400 w-full cursor-pointer"
+          className={`group flex items-center justify-between rounded-xl text-xs font-medium transition-all h-9 px-3 w-full cursor-pointer ${
+            isConfigOpen
+              ? "bg-white/[0.06] text-zinc-100 border border-white/[0.07]"
+              : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200 border border-transparent"
+          }`}
         >
           <div className="flex items-center gap-2.5">
-            <Settings size={15} />
+            <Settings
+              size={14}
+              className={`transition-transform duration-300 ${
+                isConfigOpen ? "text-emerald-400/90 rotate-45" : "text-zinc-500 group-hover:text-zinc-300"
+              }`}
+            />
             <span>Map Style</span>
           </div>
-          <ChevronDown size={14} className={`text-zinc-500 transition-transform duration-200 ${isConfigOpen ? 'rotate-180 text-zinc-300' : ''}`} />
+          <ChevronDown
+            size={14}
+            className={`text-zinc-500 transition-transform duration-200 ${
+              isConfigOpen ? "rotate-180 text-zinc-300" : ""
+            }`}
+          />
         </button>
 
         {isConfigOpen && (
-          <div className="flex flex-col gap-4 px-3 py-3 border border-zinc-800 bg-zinc-900/10 rounded-xl mt-1 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div
+            className="flex flex-col gap-3.5 p-3 rounded-xl border border-white/[0.07] bg-[#090A0D]/90 backdrop-blur-xl mt-1 animate-in fade-in slide-in-from-top-1 duration-200"
+            style={{
+              boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.04)",
+            }}
+          >
             {/* Node Shape Selector */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Node Shape</label>
-              <div className="grid grid-cols-5 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800/80">
-                {shapes.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNodeShapeChange(item.id)}
-                    className={`p-1.5 rounded-md flex items-center justify-center transition-all cursor-pointer ${
-                      nodeShape === item.id 
-                        ? "bg-zinc-800 text-zinc-50 border border-zinc-700/50" 
-                        : "text-zinc-500 hover:text-zinc-300"
-                    }`}
-                    title={item.label}
-                  >
-                    {item.icon}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Edge Style Selector */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Connection Style</label>
-              <div className="grid grid-cols-4 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800/80">
-                {edgeStyles.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleEdgeStyleChange(item.id)}
-                    className={`p-1.5 rounded-md flex items-center justify-center transition-all cursor-pointer ${
-                      edgeStyle === item.id 
-                        ? "bg-zinc-800 text-zinc-50 border border-zinc-700/50" 
-                        : "text-zinc-500 hover:text-zinc-300"
-                    }`}
-                    title={item.label}
-                  >
-                    {item.icon}
-                  </button>
-                ))}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                Node Shape
+              </label>
+              <div className="grid grid-cols-5 gap-1 bg-black/60 p-1 rounded-xl border border-white/[0.05]">
+                {shapes.map((item) => {
+                  const isSelected = nodeShape === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNodeShapeChange(item.id)}
+                      className={`p-1.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-white/[0.09] text-zinc-100 border border-white/[0.08]"
+                          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.03]"
+                      }`}
+                      title={item.label}
+                    >
+                      {item.icon}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* 3D Spatial Mode Selector */}
-            <div className="flex flex-col gap-2 pt-1 border-t border-zinc-800/60">
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">3D Spatial View</label>
-                <span className="text-[8px] font-mono font-bold bg-blue-500/10 text-blue-400 px-1 py-0.5 rounded border border-blue-500/20">3D</span>
+            {/* Edge Style Selector */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                Connection Style
+              </label>
+              <div className="grid grid-cols-4 gap-1 bg-black/60 p-1 rounded-xl border border-white/[0.05]">
+                {edgeStyles.map((item) => {
+                  const isSelected = edgeStyle === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleEdgeStyleChange(item.id)}
+                      className={`p-1.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-white/[0.09] text-zinc-100 border border-white/[0.08]"
+                          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.03]"
+                      }`}
+                      title={item.label}
+                    >
+                      {item.icon}
+                    </button>
+                  );
+                })}
               </div>
-              <div className="grid grid-cols-2 gap-1.5 bg-zinc-950 p-1 rounded-lg border border-zinc-800/80">
+            </div>
+
+            {/* 3D Spatial / 2D Canvas Mode Selector */}
+            <div className="flex flex-col gap-1.5 pt-2.5 border-t border-white/[0.05]">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                  Perspective
+                </label>
+                <span className="text-[9px] font-mono text-zinc-500 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.05]">
+                  {viewMode === "3d" || viewMode === "3d-perspective" ? "3D" : "2D"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 bg-black/60 p-1 rounded-xl border border-white/[0.05]">
                 <button
                   onClick={() => changeViewMode("3d")}
-                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                     viewMode === "3d" || viewMode === "3d-perspective"
-                      ? "bg-blue-600 text-white shadow-sm"
+                      ? "bg-white/[0.08] text-zinc-100"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}
-                  title="3D Spatial: Infinite space without boundaries"
+                  title="3D Spatial Perspective View"
                 >
-                  <Box size={12} />
+                  <Box
+                    size={12}
+                    className={
+                      viewMode === "3d" || viewMode === "3d-perspective"
+                        ? "text-emerald-400/90"
+                        : "text-zinc-500"
+                    }
+                  />
                   <span>3D Spatial</span>
                 </button>
+
                 <button
                   onClick={() => changeViewMode("2d")}
-                  className={`py-1.5 px-2 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                     viewMode === "2d" || viewMode === "3d-topdown"
-                      ? "bg-blue-600 text-white shadow-sm"
+                      ? "bg-white/[0.08] text-zinc-100"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}
-                  title="2D Canvas: Classic dotted canvas grid"
+                  title="2D Top-Down Canvas Grid"
                 >
                   <span>2D Canvas</span>
                 </button>
               </div>
             </div>
 
-            {/* Parallax Cursor Reaction */}
-            <div className="flex items-center justify-between px-1 pt-1 border-t border-zinc-800/60">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Cursor Parallax</span>
+            {/* Parallax Cursor Reaction Switch */}
+            <div
+              onClick={toggleParallax}
+              className="flex items-center justify-between pt-2.5 border-t border-white/[0.05] cursor-pointer group"
+            >
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 group-hover:text-zinc-300 transition-colors">
+                Cursor Parallax
+              </span>
+
               <button
-                onClick={toggleParallax}
-                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold cursor-pointer transition-colors ${
+                type="button"
+                role="switch"
+                aria-checked={enableParallax}
+                className={`relative inline-flex h-4 w-8 shrink-0 items-center rounded-full border transition-colors cursor-pointer ${
                   enableParallax
-                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/30"
-                    : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                    ? "bg-emerald-500/20 border-emerald-400/40"
+                    : "bg-white/[0.04] border-white/[0.08]"
                 }`}
               >
-                {enableParallax ? "ON" : "OFF"}
+                <span
+                  className={`inline-block h-2.5 w-2.5 rounded-full transition-transform ${
+                    enableParallax
+                      ? "translate-x-4 bg-emerald-400"
+                      : "translate-x-1 bg-zinc-500"
+                  }`}
+                />
               </button>
             </div>
           </div>

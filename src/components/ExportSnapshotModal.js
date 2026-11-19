@@ -2,19 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { 
-  Download, 
-  FileText, 
-  Image as ImageIcon, 
-  X, 
-  Check, 
-  Sparkles, 
-  Layers, 
-  Sliders, 
-  Maximize2,
-  AlertCircle
+import {
+  Download,
+  FileText,
+  Image as ImageIcon,
+  X,
+  Check,
+  AlertCircle,
 } from "lucide-react";
-import { exportMapImage, exportMapPdf, sanitizeFilename } from "@/utils/exportMap";
+import { exportMapImage, exportMapPdf } from "@/utils/exportMap";
 
 export default function ExportSnapshotModal({
   isOpen,
@@ -49,6 +45,16 @@ export default function ExportSnapshotModal({
     }
   }, [isOpen, activeMap]);
 
+  // Dismiss on Escape
+  useEffect(() => {
+    if (!isOpen || isExporting) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isExporting, onClose]);
+
   if (!isOpen || !mounted) return null;
 
   const handleDownload = async () => {
@@ -64,16 +70,13 @@ export default function ExportSnapshotModal({
     let savedViewport = null;
 
     try {
-      // 1. If "fit" framing selected, save current viewport and fit view
       if (framing === "fit" && fitView && getViewport && setViewport) {
         savedViewport = getViewport();
         fitView({ padding: 0.3, duration: 0 });
       }
 
-      // 2. Hide modal completely before taking the snapshot so it cannot appear in the image
+      // Hide modal before capturing snapshot
       setIsCapturing(true);
-
-      // Wait 2 animation frame ticks for DOM to flush visibility and framing
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
       const title = customTitle.trim() || activeMap?.title || "Mind Map";
@@ -84,7 +87,7 @@ export default function ExportSnapshotModal({
           element,
           title,
           pixelRatio: resolution,
-          backgroundColor: "#141414",
+          backgroundColor: "#050505",
         });
       } else {
         await exportMapImage({
@@ -93,7 +96,7 @@ export default function ExportSnapshotModal({
           format,
           transparent: format === "png" ? transparent : false,
           pixelRatio: resolution,
-          backgroundColor: "#141414",
+          backgroundColor: "#050505",
         });
       }
 
@@ -101,13 +104,12 @@ export default function ExportSnapshotModal({
       setTimeout(() => {
         setExportSuccess(false);
         onClose();
-      }, 1400);
+      }, 1200);
     } catch (err) {
       console.error("Export snapshot error:", err);
       setErrorMessage(err?.message || "Failed to generate snapshot. Please try again.");
     } finally {
       setIsCapturing(false);
-      // Restore previous viewport if we adjusted framing
       if (savedViewport && setViewport) {
         setViewport(savedViewport, { duration: 0 });
       }
@@ -119,114 +121,101 @@ export default function ExportSnapshotModal({
     <div
       role="dialog"
       aria-modal="true"
-      className={`export-modal export-exclude fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none transition-opacity duration-150 ${
-        isCapturing ? "opacity-0 pointer-events-none" : "opacity-100 animate-in fade-in-0 duration-200"
+      className={`export-modal export-exclude fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 select-none transition-opacity duration-150 ${
+        isCapturing
+          ? "opacity-0 pointer-events-none"
+          : "opacity-100 animate-in fade-in-0 duration-200"
       }`}
       onClick={onClose}
     >
+      {/* ── Stealth Matte Obsidian Dialog ── */}
       <div
-        className="relative w-full max-w-md bg-zinc-950/95 border border-zinc-700/80 rounded-2xl p-6 shadow-[0_0_50px_rgba(16,185,129,0.15)] duration-200 animate-in zoom-in-95 overflow-hidden"
+        className="relative w-full max-w-md rounded-2xl border border-white/[0.07] bg-[#090A0D]/90 backdrop-blur-xl p-5 overflow-hidden animate-in zoom-in-95 duration-200"
         style={{
-          boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 25px 50px -12px rgba(0,0,0,0.9)",
+          boxShadow:
+            "inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 24px 48px -12px rgba(0, 0, 0, 0.9)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Subtle Ambient Emerald/Blue Glow */}
-        <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-24 bg-emerald-500/15 rounded-full blur-3xl" />
-
-        {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-zinc-800">
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between gap-3 pb-4 border-b border-white/[0.06]">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-              <Download size={18} />
+            <div className="h-8 w-8 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-zinc-400 shrink-0">
+              <Download size={15} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-zinc-100 tracking-tight">
+                <h3 className="text-sm font-medium text-zinc-100 tracking-tight">
                   Export Snapshot
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase bg-blue-500/10 border border-blue-500/30 text-blue-400">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono text-zinc-400 bg-white/[0.04] border border-white/[0.06]">
                   {viewMode === "3d" ? "3D Spatial" : "2D Canvas"}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Download a high-resolution snapshot to your system
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Save a high-resolution snapshot of your workspace
               </p>
             </div>
           </div>
+
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05] transition-colors cursor-pointer"
             title="Close"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
 
-        {/* Content Body */}
-        <div className="mt-5 space-y-4">
+        {/* ── Content Body ── */}
+        <div className="mt-4 space-y-4">
           {/* Format Selector */}
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 block mb-2 font-mono">
-              Export Format
+            <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1.5">
+              Format
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setFormat("png")}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
-                  format === "png"
-                    ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-                    : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
-                }`}
-              >
-                <ImageIcon size={18} />
-                <span>PNG Image</span>
-                <span className="text-[9px] opacity-70">Lossless 4K</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFormat("jpeg")}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
-                  format === "jpeg"
-                    ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-                    : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
-                }`}
-              >
-                <ImageIcon size={18} />
-                <span>JPEG Image</span>
-                <span className="text-[9px] opacity-70">Compressed</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFormat("pdf")}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
-                  format === "pdf"
-                    ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-                    : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
-                }`}
-              >
-                <FileText size={18} />
-                <span>PDF Document</span>
-                <span className="text-[9px] opacity-70">Landscape A4</span>
-              </button>
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { id: "png", label: "PNG", sub: "Lossless", icon: ImageIcon },
+                { id: "jpeg", label: "JPEG", sub: "Compact", icon: ImageIcon },
+                { id: "pdf", label: "PDF", sub: "A4 Landscape", icon: FileText },
+              ].map(({ id, label, sub, icon: Icon }) => {
+                const isSelected = format === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setFormat(id)}
+                    className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border text-xs font-medium cursor-pointer transition-all ${
+                      isSelected
+                        ? "bg-white/[0.08] border-white/[0.14] text-zinc-100"
+                        : "bg-black/40 border-white/[0.05] text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.03]"
+                    }`}
+                  >
+                    <Icon
+                      size={15}
+                      className={isSelected ? "text-emerald-400/90" : "text-zinc-500"}
+                    />
+                    <span>{label}</span>
+                    <span className="text-[10px] text-zinc-500">{sub}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Filename Input */}
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1.5 font-mono">
+            <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1.5">
               File Name
             </label>
-            <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900/90 border border-zinc-800 rounded-xl focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/40">
+            <div className="flex items-center gap-2 px-3 py-2 bg-black/50 border border-white/[0.06] focus-within:border-white/[0.16] rounded-xl transition-colors">
               <input
                 type="text"
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
                 placeholder="Enter snapshot title..."
-                className="bg-transparent text-xs text-zinc-200 placeholder-zinc-500 outline-none w-full"
+                className="bg-transparent text-xs text-zinc-200 placeholder-zinc-600 outline-none w-full"
               />
               <span className="text-[11px] font-mono text-zinc-500 shrink-0">
                 .{format === "jpeg" ? "jpg" : format}
@@ -234,105 +223,125 @@ export default function ExportSnapshotModal({
             </div>
           </div>
 
-          {/* Settings Grid */}
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          {/* Resolution & Framing Row */}
+          <div className="grid grid-cols-2 gap-2.5">
             {/* Resolution */}
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1 font-mono">
-                Resolution
+              <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1.5">
+                Scale
               </label>
-              <div className="flex bg-zinc-900 p-0.5 rounded-xl border border-zinc-800">
+              <div className="flex bg-black/60 p-0.5 rounded-xl border border-white/[0.05]">
                 <button
                   type="button"
                   onClick={() => setResolution(1)}
-                  className={`flex-1 py-1.5 text-center text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 text-center text-xs font-medium rounded-lg transition-all cursor-pointer ${
                     resolution === 1
-                      ? "bg-zinc-800 text-white shadow-sm"
-                      : "text-zinc-400 hover:text-zinc-200"
+                      ? "bg-white/[0.08] text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
-                  1x Standard
+                  1x
                 </button>
                 <button
                   type="button"
                   onClick={() => setResolution(2)}
-                  className={`flex-1 py-1.5 text-center text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 text-center text-xs font-medium rounded-lg transition-all cursor-pointer ${
                     resolution === 2
-                      ? "bg-zinc-800 text-white shadow-sm"
-                      : "text-zinc-400 hover:text-zinc-200"
+                      ? "bg-white/[0.08] text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
-                  2x Ultra HD
+                  2x HD
                 </button>
               </div>
             </div>
 
             {/* Framing */}
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1 font-mono">
-                Framing
+              <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1.5">
+                Bounds
               </label>
-              <div className="flex bg-zinc-900 p-0.5 rounded-xl border border-zinc-800">
+              <div className="flex bg-black/60 p-0.5 rounded-xl border border-white/[0.05]">
                 <button
                   type="button"
                   onClick={() => setFraming("current")}
-                  className={`flex-1 py-1.5 text-center text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 text-center text-xs font-medium rounded-lg transition-all cursor-pointer ${
                     framing === "current"
-                      ? "bg-zinc-800 text-white shadow-sm"
-                      : "text-zinc-400 hover:text-zinc-200"
+                      ? "bg-white/[0.08] text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-300"
                   }`}
-                  title="Capture what is currently visible on your screen"
+                  title="Capture current viewport"
                 >
-                  Current View
+                  Viewport
                 </button>
                 <button
                   type="button"
                   onClick={() => setFraming("fit")}
-                  className={`flex-1 py-1.5 text-center text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 text-center text-xs font-medium rounded-lg transition-all cursor-pointer ${
                     framing === "fit"
-                      ? "bg-zinc-800 text-white shadow-sm"
-                      : "text-zinc-400 hover:text-zinc-200"
+                      ? "bg-white/[0.08] text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-300"
                   }`}
-                  title="Auto-fit all nodes within the snapshot"
+                  title="Auto-fit all nodes into frame"
                 >
-                  Fit Content
+                  Fit All
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Transparent Background Toggle (PNG only) */}
+          {/* Transparent Background Switch (PNG only) */}
           {format === "png" && (
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-850 text-xs">
+            <div
+              onClick={() => setTransparent((prev) => !prev)}
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-black/30 border border-white/[0.05] hover:border-white/[0.09] cursor-pointer transition-colors"
+            >
               <div>
-                <span className="font-semibold text-zinc-300">Transparent Background</span>
-                <p className="text-[10px] text-zinc-500">Remove dark canvas grid for standalone graphic</p>
+                <span className="text-xs font-medium text-zinc-300">
+                  Transparent Background
+                </span>
+                <p className="text-[11px] text-zinc-500">
+                  Omit dark canvas backdrop for standalone assets
+                </p>
               </div>
-              <input
-                type="checkbox"
-                checked={transparent}
-                onChange={(e) => setTransparent(e.target.checked)}
-                className="w-4 h-4 rounded bg-zinc-800 border-zinc-700 text-emerald-500 focus:ring-0 cursor-pointer"
-              />
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={transparent}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors cursor-pointer ${
+                  transparent
+                    ? "bg-emerald-500/25 border-emerald-400/50"
+                    : "bg-white/[0.05] border-white/[0.1]"
+                }`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 rounded-full transition-transform ${
+                    transparent
+                      ? "translate-x-4 bg-emerald-400"
+                      : "translate-x-1 bg-zinc-500"
+                  }`}
+                />
+              </button>
             </div>
           )}
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-950/40 border border-red-800/60 text-red-300 text-xs">
-              <AlertCircle size={14} className="shrink-0" />
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs">
+              <AlertCircle size={14} className="shrink-0 text-red-400" />
               <span>{errorMessage}</span>
             </div>
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-zinc-850">
+        {/* ── Footer Actions ── */}
+        <div className="mt-5 flex items-center justify-end gap-2 pt-4 border-t border-white/[0.06]">
           <button
             type="button"
             onClick={onClose}
             disabled={isExporting}
-            className="px-4 py-2 rounded-xl border border-zinc-800 bg-transparent hover:bg-zinc-900 text-zinc-300 text-xs font-semibold transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-transparent hover:bg-white/[0.05] border border-white/[0.06] text-zinc-400 hover:text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -341,25 +350,25 @@ export default function ExportSnapshotModal({
             type="button"
             onClick={handleDownload}
             disabled={isExporting}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-lg active:scale-95 ${
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-all active:scale-95 border ${
               exportSuccess
-                ? "bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.35)]"
+                ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
+                : "bg-white/[0.08] hover:bg-white/[0.14] border-white/[0.1] text-zinc-100 hover:text-white"
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {isExporting ? (
               <>
-                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Rendering Snapshot...</span>
+                <div className="w-3 h-3 border-2 border-white/20 border-t-zinc-200 rounded-full animate-spin" />
+                <span>Rendering...</span>
               </>
             ) : exportSuccess ? (
               <>
-                <Check size={14} className="stroke-[3]" />
-                <span>Downloaded!</span>
+                <Check size={13} />
+                <span>Saved</span>
               </>
             ) : (
               <>
-                <Download size={14} />
+                <Download size={13} />
                 <span>Download {format.toUpperCase()}</span>
               </>
             )}

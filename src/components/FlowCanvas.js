@@ -11,6 +11,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
   useOnViewportChange,
+  useUpdateNodeInternals,
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
@@ -81,6 +82,7 @@ const edgeTypes = {
 
 function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGuest, sessions, setSessions, onShare, triggerExport }) {
   const {
+    nodeShape,
     edgeStyle,
     changeNodeShape,
     changeEdgeStyle,
@@ -93,6 +95,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { screenToFlowPosition, fitView, getViewport, setViewport } = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
   const [menu, setMenu] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [activeSearch, setActiveSearch] = useState(null);
@@ -100,6 +103,13 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
   const [isMiniMapOpen, setIsMiniMapOpen] = useState(true);
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  // Synchronize node handle bounds immediately whenever nodeShape or viewMode changes
+  useEffect(() => {
+    if (nodes && nodes.length > 0) {
+      updateNodeInternals(nodes.map((n) => n.id));
+    }
+  }, [nodeShape, viewMode, updateNodeInternals]);
 
   useEffect(() => {
     if (triggerExport && triggerExport > 0) {

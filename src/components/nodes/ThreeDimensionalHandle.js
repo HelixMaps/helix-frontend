@@ -3,61 +3,49 @@
 import React, { memo } from "react";
 import { Handle } from "@xyflow/react";
 
-/**
- * ThreeDimensionalHandle
- * Renders a tactile 3D metallic optical port socket for node connection points.
- */
-const ACCENT_PALETTES = {
-  blue: {
-    core: "bg-blue-400",
-    glow: "rgba(59, 130, 246, 0.6)",
-    ring: "border-blue-400/40",
-    activeRing: "hover:border-blue-300",
-  },
+const HANDLE_COLORS = {
   emerald: {
-    core: "bg-emerald-400",
-    glow: "rgba(16, 185, 129, 0.6)",
-    ring: "border-emerald-400/40",
-    activeRing: "hover:border-emerald-300",
+    ring: "hover:ring-emerald-400/50",
+    glow: "0 0 10px rgba(16, 185, 129, 0.85)",
+    core: "#34d399",
+  },
+  cyan: {
+    ring: "hover:ring-cyan-400/50",
+    glow: "0 0 10px rgba(34, 211, 238, 0.85)",
+    core: "#22d3ee",
+  },
+  blue: {
+    ring: "hover:ring-blue-400/50",
+    glow: "0 0 10px rgba(59, 130, 246, 0.85)",
+    core: "#60a5fa",
   },
   amber: {
-    core: "bg-amber-400",
-    glow: "rgba(245, 158, 11, 0.6)",
-    ring: "border-amber-400/40",
-    activeRing: "hover:border-amber-300",
+    ring: "hover:ring-amber-400/50",
+    glow: "0 0 10px rgba(245, 158, 11, 0.85)",
+    core: "#fbbf24",
   },
 };
 
-/**
- * ThreeDimensionalHandle
- * Renders a tactile 3D metallic optical port socket for node connection points.
- */
 function ThreeDimensionalHandle({
   type,
   position,
   id,
-  accentColor = "blue",
-  className = "",
-  style = {},
+  accentColor = "emerald",
+  isConnectable = true,
 }) {
-  const palette = ACCENT_PALETTES[accentColor] || ACCENT_PALETTES.blue;
+  const palette = HANDLE_COLORS[accentColor] || HANDLE_COLORS.emerald;
 
   return (
     <Handle
       type={type}
       position={position}
       id={id}
-      className={`!w-3.5 !h-3.5 !rounded-full !border-[1.5px] ${palette.ring} ${palette.activeRing} !bg-gradient-to-b !from-zinc-800 !via-zinc-900 !to-black transition-all duration-200 group/handle hover:!scale-125 !cursor-crosshair flex items-center justify-center z-20 ${className}`}
+      isConnectable={isConnectable}
+      className={`!w-2.5 !h-2.5 !rounded-full !bg-[#0b0c10] !border-[1.5px] !border-zinc-500 hover:!border-white hover:!scale-125 hover:ring-4 ${palette.ring} transition-all duration-150 z-30`}
       style={{
-        boxShadow: `0 2px 5px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255,255,255,0.35), 0 0 6px ${palette.glow}`,
-        ...style,
+        boxShadow: `inset 0 0 0 1px ${palette.core}, ${palette.glow}`,
       }}
-    >
-      {/* 3D Glowing Core Optical Bead */}
-      <div
-        className={`w-1.5 h-1.5 rounded-full ${palette.core} shadow-[0_0_6px_currentColor] pointer-events-none transition-transform group-hover/handle:scale-125`}
-      />
-    </Handle>
+    />
   );
 }
 
