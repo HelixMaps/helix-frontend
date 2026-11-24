@@ -76,6 +76,7 @@ function ThreeDimensionalCard({
   icon: Icon,
   accentColor = "emerald",
   isEditing = false,
+  isReadOnly = false,
   selected = false,
   elevation = 40,
   children,
@@ -96,12 +97,13 @@ function ThreeDimensionalCard({
 
   const handleCycleTaskStatus = useCallback((e) => {
     e.stopPropagation();
+    if (isReadOnly) return;
     setTaskStatus((prev) => {
       if (prev === "todo") return "in_progress";
       if (prev === "in_progress") return "completed";
       return "todo";
     });
-  }, []);
+  }, [isReadOnly]);
 
   // 18px Architectural Monolith / Block Building Extrusion
   const monolithBoxShadow = useMemo(() => {
@@ -206,12 +208,14 @@ function ThreeDimensionalCard({
           position={Position.Left}
           id="target-left"
           accentColor={accentColor}
+          isConnectable={!isReadOnly}
         />
         <ThreeDimensionalHandle
           type="target"
           position={Position.Top}
           id="target-top"
           accentColor={accentColor}
+          isConnectable={!isReadOnly}
         />
 
         {/* Roof Deck Interior */}
@@ -223,14 +227,23 @@ function ThreeDimensionalCard({
           {type === "task" ? (
             <button
               onClick={handleCycleTaskStatus}
-              className={`h-9 w-9 rounded-lg border flex items-center justify-center shrink-0 cursor-pointer transition-all duration-200 active:scale-90 ${
+              disabled={isReadOnly}
+              className={`h-9 w-9 rounded-lg border flex items-center justify-center shrink-0 transition-all duration-200 ${
+                isReadOnly
+                  ? "cursor-default opacity-85"
+                  : "cursor-pointer active:scale-90"
+              } ${
                 taskStatus === "completed"
                   ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/60 shadow-[0_0_14px_rgba(16,185,129,0.35)]"
                   : taskStatus === "in_progress"
                   ? "bg-amber-500/15 text-amber-300 border-amber-400/60 shadow-[0_0_14px_rgba(245,158,11,0.35)]"
                   : "bg-white/[0.03] text-zinc-400 border-white/10 hover:border-white/25 hover:text-zinc-200"
               }`}
-              title="Click to toggle status: Todo -> In Progress -> Done"
+              title={
+                isReadOnly
+                  ? `Task Status: ${taskStatus === "completed" ? "Done" : taskStatus === "in_progress" ? "In Progress" : "Todo"}`
+                  : "Click to toggle status: Todo -> In Progress -> Done"
+              }
             >
               {taskStatus === "completed" ? (
                 <Check size={15} className="stroke-[2.5]" />
@@ -332,12 +345,14 @@ function ThreeDimensionalCard({
           position={Position.Right}
           id="source-right"
           accentColor={accentColor}
+          isConnectable={!isReadOnly}
         />
         <ThreeDimensionalHandle
           type="source"
           position={Position.Bottom}
           id="source-bottom"
           accentColor={accentColor}
+          isConnectable={!isReadOnly}
         />
       </div>
     </div>

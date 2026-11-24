@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect, Suspense, useCallback } from "react";
 import { Menu, X, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from "lucide-react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import SearchModal from "@/components/SearchModal";
 import ShareModal from "@/components/ShareModal";
+import TeamAccessModal from "@/components/TeamAccessModal";
 import CreateMapModal from "@/components/CreateMapModal";
 import FlowCanvas from "@/components/FlowCanvas";
-import { fetchProjects, createMap, updateMap, deleteMap } from "@/service/mapService";
+import { fetchProjects, fetchMap, createMap, updateMap, deleteMap, removeMapMember } from "@/service/mapService";
+import { useToast } from "@/context/ToastContext";
 
 // Helper to determine if a map is untouched / empty (initial default state)
 const isMapUnmodified = (map) => {
@@ -26,10 +28,14 @@ const isMapUnmodified = (map) => {
 };
 
 function DashboardContent() {
+  const toast = useToast();
   const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
+  const currentUserEmail = user?.primaryEmailAddress?.emailAddress || "";
   const router = useRouter();
   const searchParams = useSearchParams();
   const isGuest = searchParams.get("try") === "true";
+  const urlMapId = searchParams.get("map") || searchParams.get("id");
 
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
@@ -40,6 +46,8 @@ function DashboardContent() {
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareTargetMap, setShareTargetMap] = useState(null);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [teamTargetMap, setTeamTargetMap] = useState(null);
   const [triggerExportCount, setTriggerExportCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -55,7 +63,7 @@ function DashboardContent() {
   useEffect(() => {
     if (isGuest) {
       const defaultMap = {
-        _id: "local-default",
+        _id: urlMapId || "local-default",
         title: "My First Mind Map",
         isPinned: false,
         nodes: [
@@ -114,11 +122,36 @@ function DashboardContent() {
         const token = await getToken();
         if (!token) return;
         
-        const data = await fetchProjects(token);
-        setSessions(data || []);
-        if (data && data.length > 0) {
+        const data = await fetchProjects(token, {}, currentUserEmail);
+        let projectList = data || [];
+        let selectedId = null;
+
+        // If URL requested a specific map ID, check if it's in user's list or fetch directly
+        if (urlMapId) {
+          const match = projectList.find((s) => s._id === urlMapId);
+          if (match) {
+            selectedId = match._id;
+          } else {
+            try {
+              const directMap = await fetchMap(token, urlMapId, currentUserEmail);
+              if (directMap) {
+                projectList = [directMap, ...projectList];
+                selectedId = directMap._id;
+              }
+            } catch (directErr) {
+              console.warn("Direct map fetch failed:", directErr);
+              toast.error("Mind map could not be accessed or does not exist.", "Map Unavailable");
+            }
+          }
+        }
+
+        setSessions(projectList);
+
+        if (selectedId) {
+          setActiveSessionId(selectedId);
+        } else if (projectList.length > 0) {
           // Load first pinned map or just the first map in list
-          const active = data.find((s) => s.isPinned) || data[0];
+          const active = projectList.find((s) => s.isPinned) || projectList[0];
           setActiveSessionId(active._id);
         } else {
           // If the user has no mind maps, create a default draft (not stored in DB until changed)
@@ -147,12 +180,29 @@ function DashboardContent() {
       } catch (err) {
         console.error("Error loading mind maps:", err);
         setLoadError(err?.message || "Failed to load mind maps from backend database");
+        toast.error(err?.message || "Failed to load mind maps", "Connection Error");
       } finally {
         setIsLoading(false);
       }
     };
     loadSessions();
-  }, [isSignedIn, getToken, isGuest]);
+  }, [isSignedIn, getToken, isGuest, currentUserEmail, urlMapId]);
+
+  // Synchronize activeSessionId to the browser URL query parameter (?map=<mapId>)
+  useEffect(() => {
+    if (!activeSessionId) return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("map") !== activeSessionId) {
+        params.set("map", activeSessionId);
+        params.delete("id"); // Standardize on 'map' query param
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState(null, "", newUrl);
+      }
+    } catch (e) {
+      // browser environment check
+    }
+  }, [activeSessionId]);
 
   // ⌘K / Ctrl+K → open search
   useEffect(() => {
@@ -218,6 +268,12 @@ function DashboardContent() {
   };
 
   const handleRenameSession = async (id, newTitle) => {
+    const target = sessions.find((s) => s._id === id);
+    if (target?.isOwner === false && target?.userRole === "viewer") {
+      toast.error("Viewers have read-only access and cannot rename this map.", "Permission Denied");
+      return;
+    }
+
     // Optimistic state update
     setSessions((prev) =>
       prev.map((s) => (s._id === id ? { ...s, title: newTitle } : s))
@@ -230,6 +286,7 @@ function DashboardContent() {
       await updateMap(token, id, { title: newTitle });
     } catch (err) {
       console.error("Error renaming map:", err);
+      toast.error(err.message || "Failed to rename map on server", "Rename Failed");
     }
   };
 
@@ -254,7 +311,14 @@ function DashboardContent() {
       try {
         const token = await getToken();
         if (!token) return;
-        await deleteMap(token, deleteTargetId);
+        const targetSession = sessions.find((s) => s._id === deleteTargetId);
+        if (targetSession?.isOwner === false) {
+          await removeMapMember(token, deleteTargetId, currentUserEmail, currentUserEmail);
+          toast.success("Successfully left the shared mind map", "Left Map");
+        } else {
+          await deleteMap(token, deleteTargetId, currentUserEmail);
+          toast.success("Mind map deleted successfully", "Deleted");
+        }
         setSessions((prev) => {
           const filtered = prev.filter((s) => s._id !== deleteTargetId);
           if (activeSessionId === deleteTargetId) {
@@ -263,11 +327,39 @@ function DashboardContent() {
           return filtered;
         });
       } catch (err) {
-        console.error("Error deleting map:", err);
+        console.error("Error deleting or leaving map:", err);
+        toast.error(err.message || "Failed to delete or leave map", "Action Failed");
       } finally {
         setDeleteTargetId(null);
       }
     }
+  };
+
+  const handleOpenTeamModal = async (s) => {
+    let target = s || sessions.find((item) => item._id === activeSessionId) || sessions[0];
+    if (target?.isDraft || target?._id?.startsWith("draft-")) {
+      try {
+        const token = await getToken();
+        if (token) {
+          const savedMap = await createMap(token, target.title, null, null, {
+            nodes: target.nodes || [],
+            edges: target.edges || [],
+            styleConfig: target.styleConfig
+          }, currentUserEmail);
+          setSessions((prev) =>
+            prev.map((item) => (item._id === target._id ? { ...savedMap, isDraft: false } : item))
+          );
+          if (activeSessionId === target._id) {
+            setActiveSessionId(savedMap._id);
+          }
+          target = savedMap;
+        }
+      } catch (e) {
+        console.error("Failed to persist map for team modal:", e);
+      }
+    }
+    setTeamTargetMap(target);
+    setIsTeamModalOpen(true);
   };
 
   const getDeleteTargetTitle = () =>
@@ -294,8 +386,13 @@ function DashboardContent() {
 
   const handleUpdateStyleConfig = async (newStyleConfig) => {
     if (!activeSessionId) return;
+    const activeSession = sessions.find((s) => s._id === activeSessionId);
+    if (activeSession?.isOwner === false && activeSession?.userRole === "viewer") {
+      toast.error("Viewers have read-only access and cannot alter map styling.", "Permission Denied");
+      return;
+    }
+
     try {
-      const activeSession = sessions.find((s) => s._id === activeSessionId);
       const isChanged = !activeSession || 
         activeSession.styleConfig?.nodeShape !== newStyleConfig.nodeShape ||
         activeSession.styleConfig?.edgeStyle !== newStyleConfig.edgeStyle;
@@ -316,6 +413,7 @@ function DashboardContent() {
       }
     } catch (err) {
       console.error("Error updating style configuration:", err);
+      toast.error(err.message || "Failed to update style configuration", "Style Error");
     }
   };
 
@@ -379,6 +477,7 @@ function DashboardContent() {
           token={null} /* Deprecated, getToken is used dynamically */
           onUpdateStyleConfig={handleUpdateStyleConfig}
           isGuest={isGuest}
+          onOpenTeamSession={handleOpenTeamModal}
           onShareSession={async (s) => {
             let target = s;
             if (s?.isDraft || s?._id?.startsWith("draft-")) {
@@ -467,6 +566,8 @@ function DashboardContent() {
             sessions={sessions}
             setSessions={setSessions}
             triggerExport={triggerExportCount}
+            currentUserEmail={currentUserEmail}
+            onOpenTeam={() => handleOpenTeamModal()}
             onShare={async () => {
               let active = sessions.find((s) => s._id === activeSessionId) || sessions[0];
               if (active?.isDraft || active?._id?.startsWith("draft-")) {
@@ -477,7 +578,7 @@ function DashboardContent() {
                       nodes: active.nodes || [],
                       edges: active.edges || [],
                       styleConfig: active.styleConfig
-                    });
+                    }, currentUserEmail);
                     setSessions((prev) =>
                       prev.map((item) => (item._id === active._id ? { ...savedMap, isDraft: false } : item))
                     );
@@ -503,21 +604,42 @@ function DashboardContent() {
         onSelectSession={handleSelectSession}
       />
 
-      {/* ── 5. Share Mind Map Modal ── */}
+      {/* ── 5. Share Mind Map Modal (Public Link) ── */}
       <ShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         activeMap={shareTargetMap || sessions.find((s) => s._id === activeSessionId) || sessions[0]}
       />
 
-      {/* ── 6. Create Mind Map Modal ── */}
+      {/* ── 6. Team & Project Access Modal ── */}
+      <TeamAccessModal
+        isOpen={isTeamModalOpen}
+        onClose={() => setIsTeamModalOpen(false)}
+        activeMap={teamTargetMap || sessions.find((s) => s._id === activeSessionId) || sessions[0]}
+        currentUserEmail={currentUserEmail}
+        isOwner={
+          (teamTargetMap?.isOwner ?? (sessions.find((s) => s._id === activeSessionId)?.isOwner !== false))
+        }
+        onUpdateMap={(updated) => {
+          setSessions((prev) =>
+            prev.map((s) => (s._id === updated._id ? { ...s, ...updated } : s))
+          );
+          if (teamTargetMap?._id === updated._id) {
+            setTeamTargetMap(updated);
+          }
+        }}
+        getToken={getToken}
+        isGuest={isGuest}
+      />
+
+      {/* ── 7. Create Mind Map Modal ── */}
       <CreateMapModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleConfirmCreateMap}
       />
 
-      {/* ── 5. Delete Confirmation Modal ── */}
+      {/* ── 8. Delete / Leave Confirmation Modal ── */}
       {deleteTargetId && (
         <div
           className="fixed inset-0 z-50 bg-black/70 backdrop-blur-[2px] animate-in fade-in-0"
@@ -527,33 +649,53 @@ function DashboardContent() {
             className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border border-zinc-800 bg-zinc-950 p-6 shadow-xl duration-200 animate-in zoom-in-95 slide-in-from-left-1/2 slide-in-from-top-[48%] sm:rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-col space-y-2 text-center sm:text-left">
-              <h2 className="text-lg font-semibold leading-none tracking-tight text-zinc-50">
-                Delete Mind Map
-              </h2>
-              <p className="text-sm text-zinc-400">
-                Are you sure you want to delete{" "}
-                <span className="font-mono text-zinc-200 font-medium">
-                  &ldquo;{getDeleteTargetTitle()}&rdquo;
-                </span>
-                ? This action cannot be undone.
-              </p>
-            </div>
+            {(() => {
+              const target = sessions.find((s) => s._id === deleteTargetId);
+              const isShared = target?.isOwner === false;
+              return (
+                <>
+                  <div className="flex flex-col space-y-2 text-center sm:text-left">
+                    <h2 className="text-lg font-semibold leading-none tracking-tight text-zinc-50">
+                      {isShared ? "Leave Shared Mind Map" : "Delete Mind Map"}
+                    </h2>
+                    <p className="text-sm text-zinc-400">
+                      {isShared ? (
+                        <>
+                          Are you sure you want to leave{" "}
+                          <span className="font-mono text-zinc-200 font-medium">
+                            &ldquo;{getDeleteTargetTitle()}&rdquo;
+                          </span>
+                          ? You will no longer have access to this shared project.
+                        </>
+                      ) : (
+                        <>
+                          Are you sure you want to delete{" "}
+                          <span className="font-mono text-zinc-200 font-medium">
+                            &ldquo;{getDeleteTargetTitle()}&rdquo;
+                          </span>
+                          ? This action cannot be undone.
+                        </>
+                      )}
+                    </p>
+                  </div>
 
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
-              <button
-                onClick={() => setDeleteTargetId(null)}
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors border border-zinc-800 bg-transparent hover:bg-zinc-800/60 text-zinc-300 h-9 px-4 py-2 mt-2 sm:mt-0 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-red-900 text-red-100 hover:bg-red-800 h-9 px-4 py-2 cursor-pointer"
-              >
-                Delete
-              </button>
-            </div>
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
+                    <button
+                      onClick={() => setDeleteTargetId(null)}
+                      className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors border border-zinc-800 bg-transparent hover:bg-zinc-800/60 text-zinc-300 h-9 px-4 py-2 mt-2 sm:mt-0 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmDelete}
+                      className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-red-900 text-red-100 hover:bg-red-800 h-9 px-4 py-2 cursor-pointer"
+                    >
+                      {isShared ? "Leave Map" : "Delete"}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

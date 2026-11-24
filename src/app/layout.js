@@ -19,6 +19,8 @@ export const metadata = {
   },
 };
 
+import { ToastProvider } from "@/context/ToastContext";
+
 export default function RootLayout({ children }) {
   return (
     <html
@@ -43,7 +45,9 @@ export default function RootLayout({ children }) {
           }
         }}>
           <MapConfigProvider>
-            {children}
+            <ToastProvider>
+              {children}
+            </ToastProvider>
           </MapConfigProvider>
         </ClerkProvider>
       </body>

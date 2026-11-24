@@ -41,7 +41,9 @@ function ThreeDimensionalHandle({
       position={position}
       id={id}
       isConnectable={isConnectable}
-      className={`!w-2.5 !h-2.5 !rounded-full !bg-[#0b0c10] !border-[1.5px] !border-zinc-500 hover:!border-white hover:!scale-125 hover:ring-4 ${palette.ring} transition-all duration-150 z-30`}
+      className={`!w-2.5 !h-2.5 !rounded-full !bg-[#0b0c10] !border-[1.5px] !border-zinc-500 hover:!border-white hover:!scale-125 hover:ring-4 ${palette.ring} transition-all duration-150 z-30 ${
+        !isConnectable ? "!pointer-events-none !opacity-0 !hidden" : ""
+      }`}
       style={{
         boxShadow: `inset 0 0 0 1px ${palette.core}, ${palette.glow}`,
       }}

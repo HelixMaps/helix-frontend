@@ -66,6 +66,7 @@ function IdeaNode({ id, data, selected }) {
       accentColor="blue"
       elevation={data?.elevation ?? 55}
       isEditing={Boolean(data?.isEditing)}
+      isReadOnly={Boolean(data?.isReadOnly)}
       selected={selected}
       onLabelChange={onChange}
       onLabelBlur={onBlur}

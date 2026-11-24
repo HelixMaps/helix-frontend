@@ -66,6 +66,7 @@ function TaskNode({ id, data, selected }) {
       accentColor="emerald"
       elevation={data?.elevation ?? 35}
       isEditing={Boolean(data?.isEditing)}
+      isReadOnly={Boolean(data?.isReadOnly)}
       selected={selected}
       onLabelChange={onChange}
       onLabelBlur={onBlur}

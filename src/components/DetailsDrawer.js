@@ -1,8 +1,13 @@
 import React, { useEffect, useRef } from "react";
 import { X, Lightbulb, CheckSquare, Link2, FileText, Layers } from "lucide-react";
 
-export default function DetailsDrawer({ node, onClose, onUpdateData }) {
+export default function DetailsDrawer({ node, onClose, onUpdateData, isReadOnly = false }) {
   const drawerRef = useRef(null);
+
+  const handleUpdate = (id, data) => {
+    if (isReadOnly) return;
+    onUpdateData(id, data);
+  };
 
   // Close the drawer when clicking outside it (but not if clicking on another node)
   useEffect(() => {
@@ -77,6 +82,11 @@ export default function DetailsDrawer({ node, onClose, onUpdateData }) {
             <Icon size={16} />
           </div>
           <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">{config.label}</span>
+          {isReadOnly && (
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+              Read Only
+            </span>
+          )}
         </div>
         <button
           onClick={onClose}
@@ -97,10 +107,16 @@ export default function DetailsDrawer({ node, onClose, onUpdateData }) {
           <input
             type="text"
             value={title}
-            onChange={(e) => onUpdateData(node.id, { label: e.target.value })}
+            readOnly={isReadOnly}
+            disabled={isReadOnly}
+            onChange={(e) => handleUpdate(node.id, { label: e.target.value })}
             onKeyDown={(e) => e.stopPropagation()}
-            className="w-full bg-zinc-900/40 hover:bg-zinc-900/60 focus:bg-zinc-900/80 border border-zinc-800 focus:border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-700 transition-all duration-150"
-            placeholder="Enter title..."
+            className={`w-full bg-zinc-900/40 border border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-zinc-100 placeholder-zinc-600 transition-all duration-150 ${
+              isReadOnly
+                ? "cursor-default opacity-85 select-text"
+                : "hover:bg-zinc-900/60 focus:bg-zinc-900/80 focus:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+            }`}
+            placeholder={isReadOnly ? "Untitled" : "Enter title..."}
           />
         </div>
 
@@ -122,8 +138,11 @@ export default function DetailsDrawer({ node, onClose, onUpdateData }) {
             max="120"
             step="5"
             value={elevation}
-            onChange={(e) => onUpdateData(node.id, { elevation: Number(e.target.value) })}
-            className="w-full accent-blue-500 bg-zinc-800 h-1.5 rounded-lg appearance-none cursor-pointer mt-1"
+            disabled={isReadOnly}
+            onChange={(e) => handleUpdate(node.id, { elevation: Number(e.target.value) })}
+            className={`w-full accent-blue-500 bg-zinc-800 h-1.5 rounded-lg appearance-none mt-1 ${
+              isReadOnly ? "cursor-default opacity-60" : "cursor-pointer"
+            }`}
           />
 
           <div className="grid grid-cols-4 gap-1.5 mt-1">
@@ -135,8 +154,11 @@ export default function DetailsDrawer({ node, onClose, onUpdateData }) {
             ].map((preset) => (
               <button
                 key={preset.label}
-                onClick={() => onUpdateData(node.id, { elevation: preset.val })}
-                className={`py-1 text-[10px] font-mono font-bold rounded-lg border transition-all cursor-pointer ${
+                disabled={isReadOnly}
+                onClick={() => handleUpdate(node.id, { elevation: preset.val })}
+                className={`py-1 text-[10px] font-mono font-bold rounded-lg border transition-all ${
+                  isReadOnly ? "cursor-default opacity-60" : "cursor-pointer"
+                } ${
                   elevation === preset.val
                     ? "bg-blue-600 border-blue-400 text-white shadow-sm"
                     : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
@@ -155,10 +177,16 @@ export default function DetailsDrawer({ node, onClose, onUpdateData }) {
           </label>
           <textarea
             value={summary}
-            onChange={(e) => onUpdateData(node.id, { summary: e.target.value })}
+            readOnly={isReadOnly}
+            disabled={isReadOnly}
+            onChange={(e) => handleUpdate(node.id, { summary: e.target.value })}
             onKeyDown={(e) => e.stopPropagation()}
-            className="w-full flex-1 bg-zinc-900/40 hover:bg-zinc-900/60 focus:bg-zinc-900/80 border border-zinc-800 focus:border-zinc-700 rounded-xl px-3.5 py-3 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-700 resize-none transition-all duration-150 min-h-[300px] leading-relaxed scrollbar-thin"
-            placeholder="Write some details, summaries, or rich notes about this node here..."
+            className={`w-full flex-1 bg-zinc-900/40 border border-zinc-800 rounded-xl px-3.5 py-3 text-sm text-zinc-300 placeholder-zinc-600 resize-none transition-all duration-150 min-h-[300px] leading-relaxed scrollbar-thin ${
+              isReadOnly
+                ? "cursor-default opacity-85 select-text"
+                : "hover:bg-zinc-900/60 focus:bg-zinc-900/80 focus:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+            }`}
+            placeholder={isReadOnly ? "No notes available for this node." : "Write some details, summaries, or rich notes about this node here..."}
           />
         </div>
       </div>

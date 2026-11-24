@@ -285,12 +285,12 @@ export default function LandingPage() {
 
           {isLoaded && !user && (
             <div className="flex items-center gap-5">
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" fallbackRedirectUrl="/dashboard">
                 <button className="text-sm font-medium text-zinc-400 hover:text-white transition-colors cursor-pointer">
                   Sign In
                 </button>
               </SignInButton>
-              <SignUpButton mode="modal">
+              <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard">
                 <button className="px-4 py-2 rounded-lg text-sm font-medium bg-white text-black shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_0_20px_rgba(255,255,255,0.15)] hover:bg-zinc-200 active:scale-[0.98] transition-all cursor-pointer">
                   Get Started
                 </button>
@@ -369,7 +369,7 @@ export default function LandingPage() {
                         Try for Free
                         <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
                       </button>
-                      <SignInButton mode="modal">
+                      <SignInButton mode="modal" fallbackRedirectUrl="/dashboard">
                         <button className="flex-1 sm:flex-initial flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.02] px-6 py-3 text-sm font-medium text-zinc-300 hover:bg-white/[0.06] hover:border-white/20 hover:text-white transition-all cursor-pointer">
                           Log In
                         </button>

@@ -29,6 +29,7 @@ import ExportSnapshotModal from "./ExportSnapshotModal";
 import { useMapConfig } from "@/context/MapConfigContext";
 import { Map, Minimize2 } from "lucide-react";
 import { fetchMap, saveMapGraph, createMap } from "@/service/mapService";
+import { useToast } from "@/context/ToastContext";
 
 // Helper to determine if a map graph has meaningful user modifications from baseline
 const isGraphModified = (currNodes, currEdges, baseline) => {
@@ -80,7 +81,11 @@ const edgeTypes = {
   smoothstep: ThreeDimensionalEdge,
 };
 
-function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGuest, sessions, setSessions, onShare, triggerExport }) {
+function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGuest, sessions, setSessions, onShare, onOpenTeam, triggerExport, currentUserEmail }) {
+  const toast = useToast();
+  const currentSession = sessions?.find((s) => s._id === activeSessionId);
+  const isReadOnly = !isGuest && Boolean(currentSession && currentSession.isOwner === false && currentSession.userRole === "viewer");
+
   const {
     nodeShape,
     edgeStyle,
@@ -138,7 +143,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
   useEffect(() => {
     return () => {
       const { nodes: ns, edges: es, activeSessionId: prevSessionId } = latestStateRef.current;
-      if (!prevSessionId || ns.length === 0 || isGuest) return;
+      if (!prevSessionId || ns.length === 0 || isGuest || isReadOnly) return;
 
       const isDraft = prevSessionId.startsWith("draft-");
       if (isDraft) {
@@ -158,7 +163,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
               nodes: ns,
               edges: es,
               styleConfig
-            });
+            }, currentUserEmail);
             setSessions((prev) =>
               prev.map((s) => (s._id === prevSessionId ? { ...savedMap, isDraft: false } : s))
             );
@@ -174,7 +179,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         try {
           const token = await getToken();
           if (token) {
-            await saveMapGraph(token, prevSessionId, ns, es);
+            await saveMapGraph(token, prevSessionId, ns, es, currentUserEmail);
           }
         } catch (err) {
           console.error(`[Unmount Flush] Failed to flush graph for map ${prevSessionId}:`, err);
@@ -182,7 +187,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
       };
       flushSave();
     };
-  }, [activeSessionId, getToken, isGuest, setSessions]);
+  }, [activeSessionId, getToken, isGuest, setSessions, currentUserEmail, isReadOnly]);
 
   // 1. Load active map details on session change
   useEffect(() => {
@@ -235,7 +240,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
 
         const token = await getToken();
         if (!token) return;
-        const mapData = await fetchMap(token, activeSessionId);
+        const mapData = await fetchMap(token, activeSessionId, currentUserEmail);
         if (active) {
           const loadedNodes = mapData.nodes || [];
           const loadedEdges = mapData.edges || [];
@@ -260,6 +265,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         }
       } catch (err) {
         console.error("Error loading map details:", err);
+        toast.error(err.message || "Failed to load mind map", "Load Error");
       } finally {
         if (active) {
           setIsLoadingCanvas(false);
@@ -272,7 +278,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
     return () => {
       active = false;
     };
-  }, [activeSessionId, getToken, isGuest, setNodes, setEdges, changeNodeShape, changeEdgeStyle]);
+  }, [activeSessionId, getToken, isGuest, setNodes, setEdges, changeNodeShape, changeEdgeStyle, currentUserEmail]);
 
   // Keep in-memory sessions updated with latest nodes & edges
   useEffect(() => {
@@ -288,7 +294,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
 
   // 2. Debounced auto-save of nodes & edges (only stores in DB when modified)
   useEffect(() => {
-    if (!activeSessionId || isLoadingCanvas || isGuest) return;
+    if (!activeSessionId || isLoadingCanvas || isGuest || isReadOnly) return;
 
     const isDraft = activeSessionId.startsWith("draft-") ||
       sessionsRef.current.find((s) => s._id === activeSessionId)?.isDraft;
@@ -319,7 +325,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
             nodes,
             edges,
             styleConfig
-          });
+          }, currentUserEmail);
 
           initialBaselineRef.current = {
             sessionId: savedMap._id,
@@ -338,16 +344,17 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
           }
           isSavingDraftRef.current = false;
         } else {
-          await saveMapGraph(token, activeSessionId, nodes, edges);
+          await saveMapGraph(token, activeSessionId, nodes, edges, currentUserEmail);
         }
       } catch (err) {
         console.error("Error auto-saving map layout:", err);
+        toast.error(err.message || "Failed to auto-save map changes", "Auto-Save Error");
         isSavingDraftRef.current = false;
       }
     }, 1500);
 
     return () => clearTimeout(saveTimeout);
-  }, [nodes, edges, activeSessionId, getToken, isLoadingCanvas, isGuest, setActiveSessionId, setSessions]);
+  }, [nodes, edges, activeSessionId, getToken, isLoadingCanvas, isGuest, isReadOnly, setActiveSessionId, setSessions, currentUserEmail, toast]);
 
   // Navigate to a node found by search
   const handleSearchNode = useCallback(
@@ -368,6 +375,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
 
   const handleStartEditNode = useCallback(
     (nodeId) => {
+      if (isReadOnly) return;
       setNodes((nds) =>
         nds.map((n) => {
           if (n.id === nodeId) {
@@ -384,11 +392,12 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
       );
       setMenu(null);
     },
-    [setNodes]
+    [isReadOnly, setNodes]
   );
 
   const handleDeleteNode = useCallback(
     (nodeId) => {
+      if (isReadOnly) return;
       setNodes((nds) => nds.filter((n) => n.id !== nodeId));
       setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
       setMenu(null);
@@ -396,11 +405,12 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         setSelectedNode(null);
       }
     },
-    [setNodes, setEdges, selectedNode]
+    [isReadOnly, setNodes, setEdges, selectedNode]
   );
 
   const handleUpdateNodeData = useCallback(
     (nodeId, newData) => {
+      if (isReadOnly) return;
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === nodeId) {
@@ -428,11 +438,12 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         return curr;
       });
     },
-    [setNodes]
+    [isReadOnly, setNodes]
   );
 
   const onNodeContextMenu = useCallback(
     (event, node) => {
+      if (isReadOnly) return;
       event.preventDefault();
       setMenu({
         id: node.id,
@@ -441,7 +452,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         node,
       });
     },
-    [setMenu]
+    [isReadOnly, setMenu]
   );
 
   const onPaneClick = useCallback(() => {
@@ -461,7 +472,8 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
   }, []);
 
   const onConnect = useCallback(
-    (params) =>
+    (params) => {
+      if (isReadOnly) return;
       setEdges((eds) =>
         addEdge(
           {
@@ -472,17 +484,20 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
           },
           eds
         )
-      ),
-    [setEdges]
+      );
+    },
+    [isReadOnly, setEdges]
   );
 
   const onDragOver = useCallback((event) => {
+    if (isReadOnly) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-  }, []);
+  }, [isReadOnly]);
 
   const onDrop = useCallback(
     (event) => {
+      if (isReadOnly) return;
       event.preventDefault();
       const type = event.dataTransfer.getData("application/reactflow");
       if (!type) return;
@@ -505,11 +520,15 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [screenToFlowPosition, setNodes]
+    [isReadOnly, screenToFlowPosition, setNodes]
   );
 
   const addNodeAtCenter = useCallback(
     (type) => {
+      if (isReadOnly) {
+        toast.info("You have read-only access to this mind map.", "View Only");
+        return;
+      }
       const width = window.innerWidth;
       const height = window.innerHeight;
 
@@ -531,7 +550,36 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [screenToFlowPosition, setNodes]
+    [isReadOnly, screenToFlowPosition, setNodes, toast]
+  );
+
+  // Controlled change handlers that only permit node selection for read-only viewers
+  const handleNodesChange = useCallback(
+    (changes) => {
+      if (isReadOnly) {
+        const allowed = changes.filter((c) => c.type === "select");
+        if (allowed.length > 0) {
+          onNodesChange(allowed);
+        }
+        return;
+      }
+      onNodesChange(changes);
+    },
+    [isReadOnly, onNodesChange]
+  );
+
+  const handleEdgesChange = useCallback(
+    (changes) => {
+      if (isReadOnly) {
+        const allowed = changes.filter((c) => c.type === "select");
+        if (allowed.length > 0) {
+          onEdgesChange(allowed);
+        }
+        return;
+      }
+      onEdgesChange(changes);
+    },
+    [isReadOnly, onEdgesChange]
   );
 
   const fitViewOptions = useMemo(() => ({
@@ -539,14 +587,19 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
     maxZoom: 0.85,
   }), []);
 
-  // Node highlighting for search matches — memoized to avoid new array refs on every render
+  // Node highlighting and isReadOnly propagation — memoized to avoid new array refs on every render
   const displayNodes = useMemo(() => {
-    if (!highlightedNodeId) return nodes;
-    return nodes.map((n) => {
-      if (n.id !== highlightedNodeId) return n;
-      return { ...n, selected: true };
-    });
-  }, [nodes, highlightedNodeId]);
+    const base = highlightedNodeId
+      ? nodes.map((n) => (n.id === highlightedNodeId ? { ...n, selected: true } : n))
+      : nodes;
+    return base.map((n) => ({
+      ...n,
+      data: {
+        ...n.data,
+        isReadOnly,
+      },
+    }));
+  }, [nodes, highlightedNodeId, isReadOnly]);
 
   // Always route edges through 3D edge renderer — memoized
   const displayEdges = useMemo(() => {
@@ -798,12 +851,19 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         >
           {is3D ? "3D SPATIAL" : "2D CANVAS"}
         </span>
+        {isReadOnly && (
+          <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            VIEW ONLY
+          </span>
+        )}
       </div>
 
-      {/* ── Floating Node Picker ── */}
-      <div className="node-picker-container export-exclude absolute top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-        <NodePicker onAddNode={addNodeAtCenter} />
-      </div>
+      {/* ── Floating Node Picker (Hidden for Viewers) ── */}
+      {!isReadOnly && (
+        <div className="node-picker-container export-exclude absolute top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+          <NodePicker onAddNode={addNodeAtCenter} />
+        </div>
+      )}
 
       {/* ── Node Search Bar + Active Badge ── */}
       <div className="node-search-bar export-exclude">
@@ -820,6 +880,11 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         <SpatialCommandDeck
           onAddNode={addNodeAtCenter}
           onShare={onShare}
+          onOpenTeam={onOpenTeam}
+          isReadOnly={isReadOnly}
+          membersCount={
+            sessions?.find((s) => s._id === activeSessionId)?.members?.length || 0
+          }
           onExport={() => setIsExportModalOpen(true)}
         />
       </div>
@@ -840,20 +905,24 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         <ReactFlow
           nodes={displayNodes}
           edges={displayEdges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onDragOver={onDragOver}
-          onDrop={onDrop}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
+          onConnect={isReadOnly ? undefined : onConnect}
+          onDragOver={isReadOnly ? undefined : onDragOver}
+          onDrop={isReadOnly ? undefined : onDrop}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
+          nodesDraggable={!isReadOnly}
+          nodesConnectable={!isReadOnly}
+          elementsSelectable={true}
+          deleteKeyCode={isReadOnly ? null : ["Backspace", "Delete"]}
           fitView
           fitViewOptions={fitViewOptions}
           colorMode="dark"
           zoomOnScroll={!is3D}
           zoomOnPinch={!is3D}
           className="w-full h-full"
-          onNodeContextMenu={onNodeContextMenu}
+          onNodeContextMenu={isReadOnly ? undefined : onNodeContextMenu}
           onPaneClick={onPaneClick}
           onMoveStart={onMoveStart}
           onNodeDoubleClick={onNodeDoubleClick}
@@ -907,8 +976,8 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
       </div>
     </div>
 
-      {/* ── Context Menu ── */}
-      {menu && (
+      {/* ── Context Menu (Disabled for Viewers) ── */}
+      {menu && !isReadOnly && (
         <ContextMenu
           id={menu.id}
           x={menu.x}
@@ -926,6 +995,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
           node={selectedNode}
           onClose={closeDetailsDrawer}
           onUpdateData={handleUpdateNodeData}
+          isReadOnly={isReadOnly}
         />
       )}
 
@@ -944,7 +1014,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
   );
 }
 
-export default function FlowCanvas({ activeSessionId, setActiveSessionId, getToken, isGuest, sessions, setSessions, onShare, triggerExport }) {
+export default function FlowCanvas({ activeSessionId, setActiveSessionId, getToken, isGuest, sessions, setSessions, onShare, onOpenTeam, triggerExport, currentUserEmail }) {
   return (
     <ReactFlowProvider>
       <FlowCanvasInner
@@ -955,7 +1025,9 @@ export default function FlowCanvas({ activeSessionId, setActiveSessionId, getTok
         sessions={sessions}
         setSessions={setSessions}
         onShare={onShare}
+        onOpenTeam={onOpenTeam}
         triggerExport={triggerExport}
+        currentUserEmail={currentUserEmail}
       />
     </ReactFlowProvider>
   );

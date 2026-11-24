@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Plus, 
   Search, 
@@ -13,7 +13,10 @@ import {
   Box,
   Share2,
   Download,
-  Sparkles
+  Sparkles,
+  Users,
+  LogOut,
+  MoreHorizontal
 } from "lucide-react";
 import { SignInButton, SignUpButton, Show, UserButton, useUser } from "@clerk/nextjs";
 import { shadesOfPurple } from "@clerk/themes";
@@ -120,7 +123,8 @@ export default function Sidebar({
   onUpdateStyleConfig,
   isGuest,
   onShareSession,
-  onExportSession
+  onExportSession,
+  onOpenTeamSession
 }) {
   const { user } = useUser();
   const { 
@@ -136,6 +140,26 @@ export default function Sidebar({
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [activeMenuSessionId, setActiveMenuSessionId] = useState(null);
+
+  // Close active dropdown menu when clicking anywhere outside
+  useEffect(() => {
+    if (!activeMenuSessionId) return;
+    const handleClickOutside = (e) => {
+      if (!e.target.closest(".sidebar-dropdown-menu") && !e.target.closest(".sidebar-menu-trigger")) {
+        setActiveMenuSessionId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [activeMenuSessionId]);
+
+  const currentActiveSession = sessions.find((s) => s._id === activeSessionId);
+  const isCurrentActiveViewer = Boolean(
+    currentActiveSession &&
+    currentActiveSession.isOwner === false &&
+    currentActiveSession.userRole === "viewer"
+  );
 
   const startEditing = (e, session) => {
     e.stopPropagation();
@@ -160,6 +184,7 @@ export default function Sidebar({
   };
 
   const handleNodeShapeChange = (shapeId) => {
+    if (isCurrentActiveViewer) return;
     changeNodeShape(shapeId);
     if (onUpdateStyleConfig) {
       onUpdateStyleConfig({ nodeShape: shapeId, edgeStyle });
@@ -167,24 +192,30 @@ export default function Sidebar({
   };
 
   const handleEdgeStyleChange = (styleId) => {
+    if (isCurrentActiveViewer) return;
     changeEdgeStyle(styleId);
     if (onUpdateStyleConfig) {
       onUpdateStyleConfig({ nodeShape, edgeStyle: styleId });
     }
   };
 
-  const pinnedSessions = sessions.filter((s) => s.isPinned);
-  const recentSessions = sessions.filter((s) => !s.isPinned);
+  const ownedSessions = sessions.filter((s) => s.isOwner !== false);
+  const sharedSessions = sessions.filter((s) => s.isOwner === false);
 
-  const renderSessionItem = (session) => {
+  const pinnedSessions = ownedSessions.filter((s) => s.isPinned);
+  const recentSessions = ownedSessions.filter((s) => !s.isPinned);
+
+  const renderSessionItem = (session, isShared = false) => {
     const isActive = session._id === activeSessionId;
     const isEditing = session._id === editingId;
+    const isMenuOpen = activeMenuSessionId === session._id;
+    const isViewer = isShared && session.userRole === "viewer";
 
     return (
       <div
         key={session._id}
         onClick={() => !isEditing && onSelectSession(session._id)}
-        className={`group flex items-center justify-between h-9 px-3 rounded-md transition-colors relative cursor-pointer select-none ${
+        className={`group flex items-center justify-between h-9 px-3 rounded-lg transition-colors relative cursor-pointer select-none ${
           isActive 
             ? "bg-zinc-800/60 text-zinc-50 font-medium" 
             : "hover:bg-zinc-800/40 text-zinc-400 hover:text-zinc-200"
@@ -192,11 +223,13 @@ export default function Sidebar({
       >
         {/* Active Indicator Line */}
         {isActive && (
-          <div className="absolute left-1 top-2 bottom-2 w-[2px] bg-zinc-300 rounded-full" />
+          <div className={`absolute left-1 top-2 bottom-2 w-[2px] rounded-full ${
+            isShared ? "bg-cyan-400" : "bg-zinc-300"
+          }`} />
         )}
 
-        {/* Content Area */}
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        {/* Content Area - Maximized title width reaching all the way near the ellipsis */}
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
           {isEditing ? (
             <input
               type="text"
@@ -208,78 +241,174 @@ export default function Sidebar({
               autoFocus
             />
           ) : (
-            <span className="text-sm truncate">{session.title}</span>
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <span className="text-sm truncate flex-1 leading-snug" title={session.title}>
+                {session.title}
+              </span>
+              {isShared && (
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0 uppercase">
+                  {session.userRole || "Member"}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
-        {/* Inline Actions */}
-        <div className="flex items-center gap-0.5 shrink-0 ml-2">
+        {/* Right Action: Pin Indicator or Horizontal Ellipsis Menu Trigger */}
+        <div className="flex items-center gap-1 shrink-0 relative">
           {isEditing ? (
             <div className="flex items-center gap-0.5">
               <button 
                 onClick={saveEditing}
                 className="p-1 rounded-md text-emerald-500 hover:bg-zinc-700/50 hover:text-emerald-400 cursor-pointer transition-colors"
+                title="Save Title"
               >
                 <Check size={14} />
               </button>
               <button 
                 onClick={(e) => { e.stopPropagation(); setEditingId(null); }}
                 className="p-1 rounded-md text-rose-500 hover:bg-zinc-700/50 hover:text-rose-400 cursor-pointer transition-colors"
+                title="Cancel"
               >
                 <X size={14} />
               </button>
             </div>
           ) : (
-            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity duration-150">
-              <button
-                onClick={(e) => { e.stopPropagation(); onTogglePinSession(session._id); }}
-                className={`p-1.5 rounded-md hover:bg-zinc-700/50 cursor-pointer transition-colors ${session.isPinned ? "text-zinc-300 hover:text-red-400 hover:bg-red-500/10" : "text-zinc-500 hover:text-zinc-300"}`}
-                title={session.isPinned ? "Unpin" : "Pin"}
-              >
-                {session.isPinned ? (
-                  <PinOff size={14} />
-                ) : (
-                  <Pin size={14} />
-                )}
-              </button>
-              {onShareSession && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onShareSession(session); }}
-                  className="p-1.5 rounded-md hover:bg-zinc-700/50 text-zinc-500 hover:text-blue-400 cursor-pointer transition-colors"
-                  title="Share Mind Map"
-                >
-                  <Share2 size={14} />
-                </button>
+            <>
+              {/* Show Pin icon when pinned and not hovered/menu closed */}
+              {session.isPinned && !isMenuOpen && (
+                <Pin size={13} className="text-zinc-500 group-hover:hidden" />
               )}
-              {onExportSession && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onExportSession(session); }}
-                  className="p-1.5 rounded-md hover:bg-zinc-700/50 text-zinc-500 hover:text-emerald-400 cursor-pointer transition-colors"
-                  title="Export Snapshot (PDF / Image)"
-                >
-                  <Download size={14} />
-                </button>
-              )}
-              <button
-                onClick={(e) => startEditing(e, session)}
-                className="p-1.5 rounded-md hover:bg-zinc-700/50 text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
-                title="Rename"
-              >
-                <Edit2 size={14} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onDeleteSession(session._id); }}
-                className="p-1.5 rounded-md hover:bg-zinc-700/50 text-zinc-500 hover:text-rose-400 cursor-pointer transition-colors"
-                title="Delete"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          )}
 
-          {/* Show pin indicator if not hovered and pinned */}
-          {!isEditing && session.isPinned && (
-            <Pin size={14} className="text-zinc-500 group-hover:hidden ml-1" />
+              {/* Horizontal Ellipsis button on hover or when open */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveMenuSessionId((prev) => (prev === session._id ? null : session._id));
+                }}
+                className={`sidebar-menu-trigger p-1.5 rounded-md hover:bg-zinc-700/60 cursor-pointer transition-all ${
+                  isMenuOpen
+                    ? "opacity-100 text-zinc-100 bg-zinc-800"
+                    : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200"
+                }`}
+                title="Map Options"
+              >
+                <MoreHorizontal size={15} />
+              </button>
+
+              {/* Floating Dropdown Menu */}
+              {isMenuOpen && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="sidebar-dropdown-menu absolute right-0 top-full mt-1.5 w-48 rounded-xl bg-[#090A0D]/95 border border-white/[0.08] shadow-[0_16px_40px_rgba(0,0,0,0.85)] backdrop-blur-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-0.5 select-none"
+                  style={{
+                    boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 20px 45px -8px rgba(0, 0, 0, 0.95)",
+                  }}
+                >
+                  {/* Team Access */}
+                  {onOpenTeamSession && (
+                    <button
+                      onClick={() => {
+                        setActiveMenuSessionId(null);
+                        onOpenTeamSession(session);
+                      }}
+                      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-cyan-300 hover:bg-cyan-500/10 cursor-pointer transition-colors w-full text-left"
+                    >
+                      <Users size={14} className="text-cyan-400 shrink-0" />
+                      <span>Team & Access</span>
+                    </button>
+                  )}
+
+                  {/* Share Mind Map */}
+                  {onShareSession && (
+                    <button
+                      onClick={() => {
+                        setActiveMenuSessionId(null);
+                        onShareSession(session);
+                      }}
+                      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-blue-300 hover:bg-blue-500/10 cursor-pointer transition-colors w-full text-left"
+                    >
+                      <Share2 size={14} className="text-blue-400 shrink-0" />
+                      <span>Share Mind Map</span>
+                    </button>
+                  )}
+
+                  {/* Pin / Unpin (Only for owned maps) */}
+                  {!isShared && (
+                    <button
+                      onClick={() => {
+                        setActiveMenuSessionId(null);
+                        onTogglePinSession(session._id);
+                      }}
+                      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] cursor-pointer transition-colors w-full text-left"
+                    >
+                      {session.isPinned ? (
+                        <>
+                          <PinOff size={14} className="text-zinc-400 shrink-0" />
+                          <span>Unpin Map</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pin size={14} className="text-zinc-400 shrink-0" />
+                          <span>Pin to Top</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {/* Export Snapshot */}
+                  {onExportSession && (
+                    <button
+                      onClick={() => {
+                        setActiveMenuSessionId(null);
+                        onExportSession(session);
+                      }}
+                      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-emerald-300 hover:bg-emerald-500/10 cursor-pointer transition-colors w-full text-left"
+                    >
+                      <Download size={14} className="text-emerald-400 shrink-0" />
+                      <span>Export Snapshot</span>
+                    </button>
+                  )}
+
+                  {/* Rename Map (Only for Owner or Editor, NOT Viewer) */}
+                  {!isViewer && (
+                    <button
+                      onClick={(e) => {
+                        setActiveMenuSessionId(null);
+                        startEditing(e, session);
+                      }}
+                      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] cursor-pointer transition-colors w-full text-left"
+                    >
+                      <Edit2 size={14} className="text-zinc-400 shrink-0" />
+                      <span>Rename Map</span>
+                    </button>
+                  )}
+
+                  <div className="h-[1px] bg-white/[0.06] my-1" />
+
+                  {/* Delete (Owner) or Leave (Shared member) */}
+                  <button
+                    onClick={() => {
+                      setActiveMenuSessionId(null);
+                      onDeleteSession(session._id);
+                    }}
+                    className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer transition-colors w-full text-left"
+                  >
+                    {isShared ? (
+                      <>
+                        <LogOut size={14} className="shrink-0" />
+                        <span>Leave Map</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={14} className="shrink-0" />
+                        <span>Delete Map</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -333,28 +462,46 @@ export default function Sidebar({
               <Pin size={12} className="rotate-45" /> Pinned
             </h4>
             <div className="flex flex-col gap-0.5">
-              {pinnedSessions.map(renderSessionItem)}
+              {pinnedSessions.map((s) => renderSessionItem(s, false))}
             </div>
           </div>
         )}
 
-        {/* Recent Sessions */}
+        {/* Recent / My Mind Maps */}
         <div className="flex flex-col gap-2">
-          {pinnedSessions.length > 0 && recentSessions.length > 0 && (
+          {(pinnedSessions.length > 0 || sharedSessions.length > 0) && (
             <h4 className="px-3 text-xs font-semibold text-zinc-500 select-none uppercase tracking-wider">
-              Recent
+              {sharedSessions.length > 0 ? "My Maps" : "Recent"}
             </h4>
           )}
           <div className="flex flex-col gap-0.5">
             {recentSessions.length > 0 ? (
-              recentSessions.map(renderSessionItem)
-            ) : pinnedSessions.length === 0 ? (
+              recentSessions.map((s) => renderSessionItem(s, false))
+            ) : pinnedSessions.length === 0 && sharedSessions.length === 0 ? (
               <div className="py-6 text-center text-sm text-zinc-500 select-none">
                 No active maps found.
               </div>
             ) : null}
           </div>
         </div>
+
+        {/* Shared with Me Section */}
+        {sharedSessions.length > 0 && (
+          <div className="flex flex-col gap-2 pt-2 border-t border-white/[0.05]">
+            <div className="px-3 flex items-center justify-between">
+              <h4 className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5 select-none uppercase tracking-wider">
+                <Users size={12} className="text-cyan-400" />
+                <span>Shared with Me</span>
+              </h4>
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                {sharedSessions.length}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {sharedSessions.map((s) => renderSessionItem(s, true))}
+            </div>
+          </div>
+        )}
       </div>
 
 {/* Map Style Configuration */}
@@ -375,6 +522,11 @@ export default function Sidebar({
               }`}
             />
             <span>Map Style</span>
+            {isCurrentActiveViewer && (
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+                View Only
+              </span>
+            )}
           </div>
           <ChevronDown
             size={14}
@@ -393,22 +545,30 @@ export default function Sidebar({
           >
             {/* Node Shape Selector */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                Node Shape
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                  Node Shape
+                </label>
+                {isCurrentActiveViewer && (
+                  <span className="text-[9px] font-mono text-zinc-500">Locked</span>
+                )}
+              </div>
               <div className="grid grid-cols-5 gap-1 bg-black/60 p-1 rounded-xl border border-white/[0.05]">
                 {shapes.map((item) => {
                   const isSelected = nodeShape === item.id;
                   return (
                     <button
                       key={item.id}
+                      disabled={isCurrentActiveViewer}
                       onClick={() => handleNodeShapeChange(item.id)}
-                      className={`p-1.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-white/[0.09] text-zinc-100 border border-white/[0.08]"
-                          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.03]"
+                      className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${
+                        isCurrentActiveViewer
+                          ? "cursor-not-allowed opacity-50 text-zinc-600"
+                          : isSelected
+                          ? "bg-white/[0.09] text-zinc-100 border border-white/[0.08] cursor-pointer"
+                          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.03] cursor-pointer"
                       }`}
-                      title={item.label}
+                      title={isCurrentActiveViewer ? "Viewers cannot change map node style" : item.label}
                     >
                       {item.icon}
                     </button>
@@ -419,22 +579,30 @@ export default function Sidebar({
 
             {/* Edge Style Selector */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                Connection Style
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                  Connection Style
+                </label>
+                {isCurrentActiveViewer && (
+                  <span className="text-[9px] font-mono text-zinc-500">Locked</span>
+                )}
+              </div>
               <div className="grid grid-cols-4 gap-1 bg-black/60 p-1 rounded-xl border border-white/[0.05]">
                 {edgeStyles.map((item) => {
                   const isSelected = edgeStyle === item.id;
                   return (
                     <button
                       key={item.id}
+                      disabled={isCurrentActiveViewer}
                       onClick={() => handleEdgeStyleChange(item.id)}
-                      className={`p-1.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-white/[0.09] text-zinc-100 border border-white/[0.08]"
-                          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.03]"
+                      className={`p-1.5 rounded-lg flex items-center justify-center transition-all ${
+                        isCurrentActiveViewer
+                          ? "cursor-not-allowed opacity-50 text-zinc-600"
+                          : isSelected
+                          ? "bg-white/[0.09] text-zinc-100 border border-white/[0.08] cursor-pointer"
+                          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.03] cursor-pointer"
                       }`}
-                      title={item.label}
+                      title={isCurrentActiveViewer ? "Viewers cannot change connection style" : item.label}
                     >
                       {item.icon}
                     </button>
@@ -525,12 +693,12 @@ export default function Sidebar({
       <div className="p-4 border-t border-zinc-800/40 shrink-0 bg-zinc-950/50 select-none">
         <Show when="signed-out">
           <div className="flex flex-col gap-2 w-full">
-            <SignUpButton>
+            <SignUpButton fallbackRedirectUrl="/dashboard">
               <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-300 bg-zinc-50 text-zinc-900 hover:bg-zinc-200 h-9 px-4 py-2 w-full shadow-sm">
                 Sign Up
               </button>
             </SignUpButton>
-            <SignInButton>
+            <SignInButton fallbackRedirectUrl="/dashboard">
               <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-300 border border-zinc-800 bg-transparent hover:bg-zinc-800/60 text-zinc-300 h-9 px-4 py-2 w-full">
                 Sign In
               </button>

@@ -66,6 +66,7 @@ function ResourceNode({ id, data, selected }) {
       accentColor="amber"
       elevation={data?.elevation ?? 70}
       isEditing={Boolean(data?.isEditing)}
+      isReadOnly={Boolean(data?.isReadOnly)}
       selected={selected}
       onLabelChange={onChange}
       onLabelBlur={onBlur}
