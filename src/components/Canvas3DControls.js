@@ -13,7 +13,8 @@ import {
   Layers,
   ZoomIn,
   ZoomOut,
-  Maximize2
+  Maximize2,
+  Building2
 } from "lucide-react";
 import { useMapConfig } from "@/context/MapConfigContext";
 import { useReactFlow } from "@xyflow/react";
@@ -22,7 +23,7 @@ import { useReactFlow } from "@xyflow/react";
  * Canvas3DControls
  * Next-gen 3D Spatial Gimbal HUD:
  * - Interactive 3D Orbit Trackpad (drag to rotate camera in pitch & yaw)
- * - Cinematic Presets (Matrix 3D, Cyber Isometric, Deep Orbit, Studio Top-Down)
+ * - Cinematic Presets (Orbit 3D, Street View, Closeup View, Isometric, Studio 2D)
  * - Auto-Orbit Cinematic Showcase toggle
  * - Elevation scale booster (1x / 1.5x / 2x)
  * - Zoom & Reset camera actions
@@ -39,21 +40,37 @@ export default function Canvas3DControls() {
     toggleParallax,
   } = useMapConfig();
 
-  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, getNodes } = useReactFlow();
   const [isGimbalOpen, setIsGimbalOpen] = useState(false);
   const [isAutoOrbit, setIsAutoOrbit] = useState(false);
   const [isDraggingGimbal, setIsDraggingGimbal] = useState(false);
   const gimbalRef = useRef(null);
 
-  // Cinematic Presets
+  // Cinematic Presets including Street View and Closeup View
   const presets = [
     {
-      id: "3d-perspective",
-      label: "Matrix 3D",
+      id: "3d",
+      label: "Orbit 3D",
       icon: Box,
       pitch: 28,
       yaw: -6,
-      desc: "Cinematic perspective with receding horizon",
+      desc: "Cinematic spatial 3D orbit overview",
+    },
+    {
+      id: "3d-street",
+      label: "Street View",
+      icon: Building2,
+      pitch: 54,
+      yaw: -8,
+      desc: "Ground-level street perspective looking up at building skyscrapers",
+    },
+    {
+      id: "3d-closeup",
+      label: "Closeup",
+      icon: Eye,
+      pitch: 36,
+      yaw: -4,
+      desc: "Close-up architectural building inspection",
     },
     {
       id: "3d-isometric",
@@ -64,20 +81,12 @@ export default function Canvas3DControls() {
       desc: "Architectural 35° isometric matrix",
     },
     {
-      id: "deep-orbit",
-      label: "Deep Orbit",
-      icon: Compass,
-      pitch: 46,
-      yaw: 14,
-      desc: "Steep spatial orbit showcasing high levitation",
-    },
-    {
-      id: "3d-topdown",
+      id: "2d",
       label: "Studio 2D",
       icon: Eye,
       pitch: 0,
       yaw: 0,
-      desc: "Overhead studio view for precision editing",
+      desc: "Overhead 2D studio view for precision editing",
     },
   ];
 
@@ -160,18 +169,29 @@ export default function Canvas3DControls() {
     changeViewMode(preset.id);
     changeCanvasPitch(preset.pitch);
     changeCanvasYaw(preset.yaw);
+    if (preset.id === "3d-closeup") {
+      const allNodes = getNodes();
+      const target = allNodes.find((n) => n.selected) || allNodes[0];
+      if (target) {
+        fitView({ nodes: [{ id: target.id }], padding: 0.7, maxZoom: 1.8, duration: 600 });
+      }
+    } else if (preset.id === "3d-street") {
+      fitView({ padding: 0.35, duration: 600 });
+    } else {
+      fitView({ padding: 0.35, duration: 600 });
+    }
   };
 
   const handleResetCamera = () => {
     setIsAutoOrbit(false);
-    changeViewMode("3d-perspective");
+    changeViewMode("3d");
     changeCanvasPitch(28);
     changeCanvasYaw(-6);
     fitView({ padding: 0.35, duration: 600 });
   };
 
   return (
-    <div className="fixed bottom-6 left-6 z-30 flex flex-col items-start gap-3 select-none">
+    <div className="fixed bottom-6 left-6 z-30 hidden md:flex flex-col items-start gap-3 select-none">
       {/* ── EXPANDED 3D ORBIT GIMBAL TRACKPAD ── */}
       {isGimbalOpen && (
         <div

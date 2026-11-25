@@ -16,7 +16,10 @@ import {
   Sparkles,
   Users,
   LogOut,
-  MoreHorizontal
+  MoreHorizontal,
+  Building2,
+  Eye,
+  Grid
 } from "lucide-react";
 import { SignInButton, SignUpButton, Show, UserButton, useUser } from "@clerk/nextjs";
 import { shadesOfPurple } from "@clerk/themes";
@@ -611,14 +614,20 @@ export default function Sidebar({
               </div>
             </div>
 
-            {/* 3D Spatial / 2D Canvas Mode Selector */}
+            {/* 3D Spatial / Street / Closeup / 2D Canvas Mode Selector */}
             <div className="flex flex-col gap-1.5 pt-2.5 border-t border-white/[0.05]">
               <div className="flex items-center justify-between">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
                   Perspective
                 </label>
                 <span className="text-[9px] font-mono text-zinc-500 bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/[0.05]">
-                  {viewMode === "3d" || viewMode === "3d-perspective" ? "3D" : "2D"}
+                  {viewMode === "3d-street"
+                    ? "Street"
+                    : viewMode === "3d-closeup"
+                    ? "Closeup"
+                    : viewMode !== "2d" && viewMode !== "3d-topdown"
+                    ? "3D"
+                    : "2D"}
                 </span>
               </div>
 
@@ -630,7 +639,7 @@ export default function Sidebar({
                       ? "bg-white/[0.08] text-zinc-100"
                       : "text-zinc-500 hover:text-zinc-300"
                   }`}
-                  title="3D Spatial Perspective View"
+                  title="3D Spatial Perspective Orbit"
                 >
                   <Box
                     size={12}
@@ -640,7 +649,39 @@ export default function Sidebar({
                         : "text-zinc-500"
                     }
                   />
-                  <span>3D Spatial</span>
+                  <span>3D Orbit</span>
+                </button>
+
+                <button
+                  onClick={() => changeViewMode("3d-street")}
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    viewMode === "3d-street"
+                      ? "bg-blue-600/20 text-blue-300 border border-blue-500/30"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                  title="Street View: Ground-level perspective looking up at buildings"
+                >
+                  <Building2
+                    size={12}
+                    className={viewMode === "3d-street" ? "text-blue-400" : "text-zinc-500"}
+                  />
+                  <span>Street View</span>
+                </button>
+
+                <button
+                  onClick={() => changeViewMode("3d-closeup")}
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    viewMode === "3d-closeup"
+                      ? "bg-amber-600/20 text-amber-300 border border-amber-500/30"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                  title="Closeup View: Inspect building architecture up close"
+                >
+                  <Eye
+                    size={12}
+                    className={viewMode === "3d-closeup" ? "text-amber-400" : "text-zinc-500"}
+                  />
+                  <span>Closeup</span>
                 </button>
 
                 <button
@@ -652,6 +693,14 @@ export default function Sidebar({
                   }`}
                   title="2D Top-Down Canvas Grid"
                 >
+                  <Grid
+                    size={12}
+                    className={
+                      viewMode === "2d" || viewMode === "3d-topdown"
+                        ? "text-cyan-400/90"
+                        : "text-zinc-500"
+                    }
+                  />
                   <span>2D Canvas</span>
                 </button>
               </div>

@@ -25,7 +25,7 @@ export const MapConfigProvider = ({ children }) => {
 
       const savedViewMode = localStorage.getItem("helix-view-mode");
       if (savedViewMode) {
-        setViewMode(savedViewMode === "2d" || savedViewMode === "3d-topdown" ? "2d" : "3d");
+        setViewMode(savedViewMode);
       }
 
       const savedPitch = localStorage.getItem("helix-canvas-pitch");
@@ -57,17 +57,26 @@ export const MapConfigProvider = ({ children }) => {
   };
 
   const changeViewMode = (mode) => {
-    const normalized = mode === "2d" || mode === "3d-topdown" ? "2d" : "3d";
-    setViewMode(normalized);
+    setViewMode(mode);
     if (typeof window !== "undefined") {
-      localStorage.setItem("helix-view-mode", normalized);
+      localStorage.setItem("helix-view-mode", mode);
     }
-    if (normalized === "3d") {
-      setCanvasPitch(20);
-      setCanvasYaw(-4);
-    } else {
+    if (mode === "2d" || mode === "3d-topdown") {
       setCanvasPitch(0);
       setCanvasYaw(0);
+    } else if (mode === "3d-street") {
+      setCanvasPitch(54);
+      setCanvasYaw(-8);
+    } else if (mode === "3d-closeup") {
+      setCanvasPitch(36);
+      setCanvasYaw(-4);
+    } else if (mode === "3d-isometric") {
+      setCanvasPitch(42);
+      setCanvasYaw(-28);
+    } else {
+      // Standard 3D Orbit / Perspective
+      setCanvasPitch(28);
+      setCanvasYaw(-6);
     }
   };
 
