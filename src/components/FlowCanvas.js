@@ -181,7 +181,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
           if (token) {
             // Only flush if map actually exists in active sessions list
             const targetSession = sessionsRef.current.find((s) => s._id === prevSessionId);
-            if (!targetSession || targetSession.isDraft) return;
+            if (!targetSession || targetSession.isDraft || prevSessionId.startsWith("draft-") || prevSessionId === "local-default") return;
             await saveMapGraph(token, prevSessionId, ns, es, currentUserEmail);
           }
         } catch (err) {
@@ -350,7 +350,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
           isSavingDraftRef.current = false;
         } else {
           const targetSession = sessionsRef.current.find((s) => s._id === activeSessionId);
-          if (!targetSession || targetSession.isDraft) return;
+          if (!targetSession || targetSession.isDraft || activeSessionId.startsWith("draft-") || activeSessionId === "local-default") return;
           await saveMapGraph(token, activeSessionId, nodes, edges, currentUserEmail);
         }
       } catch (err) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense, useCallback } from "react";
+import React, { useState, useEffect, Suspense, useCallback, useRef } from "react";
 import { Menu, X, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from "lucide-react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -35,7 +35,8 @@ function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isGuest = searchParams.get("try") === "true";
-  const urlMapId = searchParams.get("map") || searchParams.get("mapId") || searchParams.get("id");
+  const rawUrlMap = searchParams.get("map") || searchParams.get("mapId") || searchParams.get("id");
+  const urlMapId = (rawUrlMap && !rawUrlMap.startsWith("draft-") && rawUrlMap !== "local-default") ? rawUrlMap : null;
 
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
@@ -52,6 +53,26 @@ function DashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
+  const hasLoadedProjectsRef = useRef(false);
+  const activeSessionIdRef = useRef(activeSessionId);
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
+
+  // Clean invalid draft parameter from URL immediately
+  useEffect(() => {
+    if (rawUrlMap && (rawUrlMap.startsWith("draft-") || rawUrlMap === "local-default")) {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        params.delete("map");
+        params.delete("mapId");
+        params.delete("id");
+        const cleanUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+        window.history.replaceState(null, "", cleanUrl);
+      } catch (e) {}
+    }
+  }, [rawUrlMap]);
+
   // 1. Redirect to Sign In if signed out and not guest
   useEffect(() => {
     if (isLoaded && !isSignedIn && !isGuest) {
@@ -63,7 +84,7 @@ function DashboardContent() {
   useEffect(() => {
     if (isGuest) {
       const defaultMap = {
-        _id: urlMapId || "local-default",
+        _id: "local-default",
         title: "My First Mind Map",
         isPinned: false,
         nodes: [
@@ -115,6 +136,45 @@ function DashboardContent() {
 
     if (!isSignedIn) return;
 
+    // If projects are already loaded, only handle switching to an external urlMapId if different
+    if (hasLoadedProjectsRef.current) {
+      if (!urlMapId || urlMapId === activeSessionIdRef.current) {
+        return;
+      }
+      setSessions((prev) => {
+        const match = prev.find((s) => s._id === urlMapId);
+        if (match) {
+          setActiveSessionId(urlMapId);
+        } else {
+          // Fetch map directly if not in user's loaded projects (e.g. shared with user)
+          (async () => {
+            try {
+              const token = await getToken();
+              if (!token) return;
+              const directMap = await fetchMap(token, urlMapId, currentUserEmail);
+              if (directMap) {
+                setSessions((current) => [directMap, ...current.filter((s) => s._id !== directMap._id)]);
+                setActiveSessionId(directMap._id);
+              }
+            } catch (err) {
+              console.warn("Direct map fetch failed:", err);
+              toast.error("Mind map could not be accessed or does not exist.", "Map Unavailable");
+              try {
+                const params = new URLSearchParams(window.location.search);
+                params.delete("map");
+                params.delete("mapId");
+                params.delete("id");
+                const cleanUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+                window.history.replaceState(null, "", cleanUrl);
+              } catch (e) {}
+            }
+          })();
+        }
+        return prev;
+      });
+      return;
+    }
+
     const loadSessions = async () => {
       try {
         setIsLoading(true);
@@ -155,6 +215,7 @@ function DashboardContent() {
         }
 
         setSessions(projectList);
+        hasLoadedProjectsRef.current = true;
 
         if (selectedId) {
           setActiveSessionId(selectedId);
@@ -195,18 +256,30 @@ function DashboardContent() {
       }
     };
     loadSessions();
-  }, [isSignedIn, getToken, isGuest, currentUserEmail, urlMapId]);
+  }, [isSignedIn, getToken, isGuest, currentUserEmail, urlMapId, toast]);
 
   // Synchronize activeSessionId to the browser URL query parameter (?map=<mapId>)
   useEffect(() => {
-    if (!activeSessionId) return;
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("map") !== activeSessionId) {
-        params.set("map", activeSessionId);
-        params.delete("id"); // Standardize on 'map' query param
-        const newUrl = `${window.location.pathname}?${params.toString()}`;
-        window.history.replaceState(null, "", newUrl);
+      const isDraftOrLocal = !activeSessionId || activeSessionId.startsWith("draft-") || activeSessionId === "local-default";
+
+      if (isDraftOrLocal) {
+        if (params.has("map") || params.has("mapId") || params.has("id")) {
+          params.delete("map");
+          params.delete("mapId");
+          params.delete("id");
+          const cleanUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+          window.history.replaceState(null, "", cleanUrl);
+        }
+      } else {
+        if (params.get("map") !== activeSessionId) {
+          params.set("map", activeSessionId);
+          params.delete("mapId");
+          params.delete("id");
+          const newUrl = `${window.location.pathname}?${params.toString()}`;
+          window.history.replaceState(null, "", newUrl);
+        }
       }
     } catch (e) {
       // browser environment check
