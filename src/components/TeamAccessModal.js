@@ -156,8 +156,8 @@ export default function TeamAccessModal({
         onUpdateMap(updatedMap);
       }
       setEmailInput("");
-      setSuccessMessage(`Invited ${trimmedEmail} as ${selectedRole}`);
-      setTimeout(() => setSuccessMessage(""), 3000);
+      setSuccessMessage(`Invited ${trimmedEmail} as ${selectedRole} (email notification sent)`);
+      setTimeout(() => setSuccessMessage(""), 3500);
     } catch (err) {
       setErrorMessage(err.message || "Failed to add team member");
     } finally {

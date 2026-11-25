@@ -149,13 +149,7 @@ export default function ExportSnapshotModal({
                   Export Snapshot
                 </h3>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-mono text-zinc-400 bg-white/[0.04] border border-white/[0.06]">
-                  {viewMode === "3d-street"
-                    ? "Street View"
-                    : viewMode === "3d-closeup"
-                    ? "Closeup View"
-                    : viewMode !== "2d" && viewMode !== "3d-topdown"
-                    ? "3D Spatial"
-                    : "2D Canvas"}
+                  {viewMode === "3d" ? "3D Spatial" : "2D Canvas"}
                 </span>
               </div>
               <p className="text-xs text-zinc-500 mt-0.5">

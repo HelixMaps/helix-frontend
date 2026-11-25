@@ -15,7 +15,6 @@ import {
   Download,
   Users,
   Eye,
-  Building2,
 } from "lucide-react";
 import { useMapConfig } from "@/context/MapConfigContext";
 import { useReactFlow } from "@xyflow/react";
@@ -33,23 +32,8 @@ export default function SpatialCommandDeck({
   const { getNodes, getEdges, setNodes, fitView, zoomIn, zoomOut } = useReactFlow();
   const [isOrganizing, setIsOrganizing] = useState(false);
 
-  const is3DActive = viewMode !== "2d" && viewMode !== "3d-topdown";
+  const is3DActive = viewMode === "3d" || viewMode === "3d-perspective";
   const is2DActive = viewMode === "2d" || viewMode === "3d-topdown";
-
-  const handleSwitchView = (mode) => {
-    changeViewMode(mode);
-    if (mode === "3d-closeup") {
-      const allNodes = getNodes();
-      const selected = allNodes.find((n) => n.selected) || allNodes[0];
-      if (selected) {
-        fitView({ nodes: [{ id: selected.id }], padding: 0.7, maxZoom: 1.8, duration: 600 });
-      }
-    } else if (mode === "3d-street") {
-      fitView({ padding: 0.35, duration: 600 });
-    } else if (mode === "3d") {
-      fitView({ padding: 0.35, duration: 600 });
-    }
-  };
 
   const handleAutoLayout = () => {
     if (isReadOnly) return;
@@ -136,58 +120,32 @@ export default function SpatialCommandDeck({
           </div>
         )}
 
-        {/* ── 3. Segmented 2D / 3D Orbit / Street / Closeup Switcher ── */}
+        {/* ── 3. Quiet Segmented 3D / 2D Switcher ── */}
         <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-black/50 border border-white/[0.05]">
           <button
-            onClick={() => handleSwitchView("2d")}
+            onClick={() => changeViewMode("3d")}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
-              viewMode === "2d" || viewMode === "3d-topdown"
+              is3DActive
+                ? "bg-white/[0.08] text-zinc-100"
+                : "text-zinc-500 hover:text-zinc-300"
+            }`}
+            title="3D Spatial Perspective View"
+          >
+            <Box size={13} className={is3DActive ? "text-emerald-400/90" : "text-zinc-500"} />
+            <span>3D</span>
+          </button>
+
+          <button
+            onClick={() => changeViewMode("2d")}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
+              is2DActive
                 ? "bg-white/[0.08] text-zinc-100"
                 : "text-zinc-500 hover:text-zinc-300"
             }`}
             title="2D Top-Down Canvas Grid"
           >
-            <Grid size={13} className={viewMode === "2d" || viewMode === "3d-topdown" ? "text-cyan-400/90" : "text-zinc-500"} />
+            <Grid size={13} className={is2DActive ? "text-cyan-400/90" : "text-zinc-500"} />
             <span>2D</span>
-          </button>
-
-          <button
-            onClick={() => handleSwitchView("3d")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
-              viewMode === "3d" || viewMode === "3d-perspective"
-                ? "bg-white/[0.08] text-zinc-100"
-                : "text-zinc-500 hover:text-zinc-300"
-            }`}
-            title="3D Spatial Perspective Orbit"
-          >
-            <Box size={13} className={viewMode === "3d" || viewMode === "3d-perspective" ? "text-emerald-400/90" : "text-zinc-500"} />
-            <span>3D</span>
-          </button>
-
-          <button
-            onClick={() => handleSwitchView("3d-street")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
-              viewMode === "3d-street"
-                ? "bg-blue-600/25 text-blue-200 border border-blue-500/30"
-                : "text-zinc-500 hover:text-zinc-300"
-            }`}
-            title="Street View: Low-angle ground level perspective looking up at buildings"
-          >
-            <Building2 size={13} className={viewMode === "3d-street" ? "text-blue-400" : "text-zinc-500"} />
-            <span className="hidden sm:inline">Street</span>
-          </button>
-
-          <button
-            onClick={() => handleSwitchView("3d-closeup")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
-              viewMode === "3d-closeup"
-                ? "bg-amber-600/25 text-amber-200 border border-amber-500/30"
-                : "text-zinc-500 hover:text-zinc-300"
-            }`}
-            title="Closeup View: Inspect building architecture up close"
-          >
-            <Eye size={13} className={viewMode === "3d-closeup" ? "text-amber-400" : "text-zinc-500"} />
-            <span className="hidden sm:inline">Closeup</span>
           </button>
         </div>
 

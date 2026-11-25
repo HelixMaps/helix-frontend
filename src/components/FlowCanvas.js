@@ -26,9 +26,8 @@ import ContextMenu from "./ContextMenu";
 import DetailsDrawer from "./DetailsDrawer";
 import NodeSearchBar from "./NodeSearchBar";
 import ExportSnapshotModal from "./ExportSnapshotModal";
-import Canvas3DControls from "./Canvas3DControls";
 import { useMapConfig } from "@/context/MapConfigContext";
-import { Map, Minimize2, Building2, Eye, Box } from "lucide-react";
+import { Map, Minimize2 } from "lucide-react";
 import { fetchMap, saveMapGraph, createMap } from "@/service/mapService";
 import { useToast } from "@/context/ToastContext";
 
@@ -93,7 +92,6 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
     changeNodeShape,
     changeEdgeStyle,
     viewMode,
-    changeViewMode,
     canvasPitch,
     canvasYaw,
     enableParallax,
@@ -611,10 +609,8 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
     }));
   }, [edges]);
 
-  // Calculate 3D perspective pitch and yaw: 3D Spatial (Orbit, Street View, Closeup) vs 2D Canvas
-  const is3D = viewMode !== "2d" && viewMode !== "3d-topdown";
-  const isStreetView = viewMode === "3d-street";
-  const isCloseupView = viewMode === "3d-closeup";
+  // Calculate 3D perspective pitch and yaw: 3D Spatial vs 2D Canvas
+  const is3D = viewMode === "3d" || viewMode === "3d-perspective";
   const effectivePitch = is3D ? canvasPitch : 0;
   const effectiveYaw = is3D ? canvasYaw : 0;
 
@@ -824,8 +820,8 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         ref={canvasContainerRef}
         className="relative w-full h-full bg-[#141414] text-zinc-100 select-none overflow-hidden font-sans transition-colors duration-500"
         style={{
-          perspective: isStreetView ? "1200px" : is3D ? "1400px" : "none",
-          perspectiveOrigin: isStreetView ? "50% 62%" : "50% 50%",
+          perspective: is3D ? "1400px" : "none",
+          perspectiveOrigin: "50% 50%",
           background: "#141414",
         }}
       >
@@ -848,22 +844,12 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         </span>
         <span
           className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold border transition-colors ${
-            isStreetView
-              ? "bg-blue-600/20 text-blue-300 border-blue-500/40 shadow-sm"
-              : isCloseupView
-              ? "bg-amber-600/20 text-amber-300 border-amber-500/40 shadow-sm"
-              : is3D
+            is3D
               ? "bg-zinc-800 text-zinc-100 border-zinc-600 shadow-sm"
               : "bg-zinc-850 text-zinc-400 border-zinc-750"
           }`}
         >
-          {isStreetView
-            ? "3D STREET VIEW"
-            : isCloseupView
-            ? "3D CLOSEUP VIEW"
-            : is3D
-            ? "3D SPATIAL"
-            : "2D CANVAS"}
+          {is3D ? "3D SPATIAL" : "2D CANVAS"}
         </span>
         {isReadOnly && (
           <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
@@ -871,50 +857,6 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
           </span>
         )}
       </div>
-
-      {/* ── Street View Active Banner ── */}
-      {isStreetView && (
-        <div className="absolute top-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-zinc-950/90 backdrop-blur-xl border border-blue-500/30 shadow-[0_8px_32px_rgba(0,0,0,0.8),0_0_20px_rgba(59,130,246,0.15)] animate-in fade-in slide-in-from-top-2 duration-300 pointer-events-auto">
-          <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-blue-300">
-            <Building2 size={13} className="text-blue-400" />
-            <span>STREET VIEW • 54° HORIZON</span>
-          </div>
-          <span className="text-zinc-700">|</span>
-          <span className="text-[10px] text-zinc-400 font-mono hidden md:inline">
-            Scroll or pan streets • Click node to inspect building
-          </span>
-          <button
-            onClick={() => changeViewMode("3d")}
-            className="text-[10px] font-mono text-zinc-400 hover:text-white px-2 py-0.5 rounded bg-white/[0.05] hover:bg-white/[0.1] transition-all cursor-pointer"
-          >
-            Reset Orbit
-          </button>
-        </div>
-      )}
-
-      {/* ── Closeup View Active Banner ── */}
-      {isCloseupView && (
-        <div className="absolute top-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-zinc-950/90 backdrop-blur-xl border border-amber-500/30 shadow-[0_8px_32px_rgba(0,0,0,0.8),0_0_20px_rgba(245,158,11,0.15)] animate-in fade-in slide-in-from-top-2 duration-300 pointer-events-auto">
-          <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-amber-300">
-            <Eye size={13} className="text-amber-400" />
-            <span>CLOSEUP VIEW • BUILDING INSPECTION</span>
-          </div>
-          <span className="text-zinc-700">|</span>
-          <button
-            onClick={() => changeViewMode("3d-street")}
-            className="text-[10px] font-mono text-blue-400 hover:text-blue-300 px-2 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 transition-all cursor-pointer flex items-center gap-1"
-          >
-            <Building2 size={11} />
-            <span>Street View</span>
-          </button>
-          <button
-            onClick={() => changeViewMode("3d")}
-            className="text-[10px] font-mono text-zinc-400 hover:text-white px-2 py-0.5 rounded bg-white/[0.05] hover:bg-white/[0.1] transition-all cursor-pointer"
-          >
-            Orbit 3D
-          </button>
-        </div>
-      )}
 
       {/* ── Floating Node Picker (Hidden for Viewers) ── */}
       {!isReadOnly && (
@@ -947,9 +889,6 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         />
       </div>
 
-      {/* ── 3D Spatial Gimbal & Camera Controls ── */}
-      {is3D && <Canvas3DControls />}
-
       {/* ── Shared SVG filter defs for all edges (mounted once) ── */}
       <SharedEdgeDefs />
 
@@ -959,7 +898,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         style={{
           transformStyle: "preserve-3d",
           transform: is3D
-            ? `rotateX(${effectivePitch}deg) rotateZ(${effectiveYaw}deg) scale(${isStreetView ? 1.55 : 1.45})`
+            ? `rotateX(${effectivePitch}deg) rotateZ(${effectiveYaw}deg) scale(1.45)`
             : "none",
         }}
       >
@@ -990,21 +929,6 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         >
           {/* Dotted canvas background matching commit 92ac7aaf590956498a67daf79b420d16608170f7 */}
           <Background variant="dots" gap={24} size={1.5} color="#27272a" />
-
-          {/* 3D Street Avenue Guidelines (Subtle urban street grid lines) */}
-          {is3D && (
-            <svg
-              className="absolute inset-0 w-full h-full pointer-events-none opacity-25"
-              style={{ overflow: "visible" }}
-            >
-              <defs>
-                <pattern id="street-avenues" width="240" height="240" patternUnits="userSpaceOnUse">
-                  <path d="M 240 0 L 0 0 0 240" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="6 8" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#street-avenues)" />
-            </svg>
-          )}
 
 
           {/* MiniMap — ONLY rendered in 2D mode; completely hidden in 3D */}

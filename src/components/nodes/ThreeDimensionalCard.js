@@ -1,35 +1,11 @@
 "use client";
 
 import React, { useState, useCallback, useMemo, memo } from "react";
-import { Position, useReactFlow } from "@xyflow/react";
+import { Position } from "@xyflow/react";
 import { use3DTilt } from "@/hooks/use3DTilt";
 import { useMapConfig } from "@/context/MapConfigContext";
 import ThreeDimensionalHandle from "./ThreeDimensionalHandle";
-import { Check, Clock, Circle, Building2, Eye } from "lucide-react";
-
-// Deterministic window lighting hash based on node ID, story, and column
-const getWindowLit = (nodeId, story, col) => {
-  let hash = 0;
-  const str = `${nodeId}-s${story}-c${col}`;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash) % 3 !== 0;
-};
-
-const getWindowColor = (nodeId, story, col, theme) => {
-  let hash = 0;
-  const str = `${nodeId}-c-${story}-${col}`;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  const mod = Math.abs(hash) % 5;
-  if (mod === 0) return theme.accent;
-  if (mod === 1) return theme.accentLight;
-  return "rgba(255, 255, 255, 0.45)";
-};
+import { Check, Clock, Circle } from "lucide-react";
 
 // Uniform architectural block proportions preventing dimension jumps across shape modes
 const SHAPE_GEOMETRY = {
@@ -108,10 +84,8 @@ function ThreeDimensionalCard({
   onLabelBlur,
   onLabelKeyDown,
 }) {
-  const { nodeShape, viewMode, changeViewMode } = useMapConfig();
-  const { fitView } = useReactFlow();
+  const { nodeShape, viewMode } = useMapConfig();
   const is2D = viewMode === "2d" || viewMode === "3d-topdown";
-  const isCloseup = viewMode === "3d-closeup";
 
   const { cardRef, tilt, handlers } = use3DTilt({ maxTilt: 6, scale: 1.015 });
 
@@ -130,36 +104,6 @@ function ThreeDimensionalCard({
       return "todo";
     });
   }, [isReadOnly]);
-
-  // Architectural Building Height & Stories calculation
-  const buildingHeight = useMemo(() => {
-    if (is2D) return 0;
-    // Map elevation (e.g. 20m - 100m) to physical 3D skyscraper depth in pixels
-    return Math.max(48, Math.min(110, Math.round(Number(elevation || 45) * 1.08)));
-  }, [is2D, elevation]);
-
-  const storiesCount = useMemo(() => {
-    return Math.max(3, Math.min(6, Math.round(buildingHeight / 16)));
-  }, [buildingHeight]);
-
-  const storyList = useMemo(() => {
-    return Array.from({ length: storiesCount }, (_, i) => storiesCount - i);
-  }, [storiesCount]);
-
-  // Inspect Building in Close-up View handler
-  const handleInspectBuilding = useCallback(
-    (e) => {
-      e.stopPropagation();
-      changeViewMode("3d-closeup");
-      fitView({
-        nodes: [{ id }],
-        padding: 0.7,
-        maxZoom: 1.8,
-        duration: 600,
-      });
-    },
-    [id, fitView, changeViewMode]
-  );
 
   // 18px Architectural Monolith / Block Building Extrusion
   const monolithBoxShadow = useMemo(() => {
@@ -188,7 +132,7 @@ function ThreeDimensionalCard({
       "0 6px 0 #171a20",
       "0 7px 0 #14171c",
       "0 8px 0 #111318",
-      // Architectural mid-building horizontal reveal line
+      // Architectural mid-building horizontal seam / reveal line (9px)
       "0 9px 0 rgba(255, 255, 255, 0.08)",
       // Lower story facade (10px - 16px)
       "0 10px 0 #13151b",
@@ -224,30 +168,7 @@ function ThreeDimensionalCard({
         transition: "transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)",
       }}
     >
-      {/* ── Street Foundation Plinth (Ground Level Z=0 on the Street) ── */}
-      {!is2D && (
-        <div
-          className="absolute -inset-1.5 rounded-2xl pointer-events-none transition-all duration-300"
-          style={{
-            transform: "translateZ(0px)",
-            background: "radial-gradient(ellipse at center, rgba(14, 16, 22, 0.98) 0%, rgba(9, 10, 14, 0.9) 70%, transparent 100%)",
-            border: `1px solid ${selected ? theme.accent : "rgba(255, 255, 255, 0.08)"}`,
-            boxShadow: selected
-              ? `0 0 35px 8px ${theme.floorGlowHover}, 0 24px 44px rgba(0,0,0,0.95)`
-              : tilt.isHovered
-              ? `0 0 28px 4px ${theme.floorGlow}, 0 20px 38px rgba(0,0,0,0.9)`
-              : `0 0 18px 2px ${theme.floorGlow}, 0 14px 28px rgba(0,0,0,0.85)`,
-          }}
-        >
-          {/* Architectural Foundation Curb Markings */}
-          <div className="absolute top-1 left-1.5 w-2 h-2 border-t border-l border-white/20" />
-          <div className="absolute top-1 right-1.5 w-2 h-2 border-t border-r border-white/20" />
-          <div className="absolute bottom-1 left-1.5 w-2 h-2 border-b border-l border-white/20" />
-          <div className="absolute bottom-1 right-1.5 w-2 h-2 border-b border-r border-white/20" />
-        </div>
-      )}
-
-      {/* ── Main Architectural Roof Deck (Lifted to building height in 3D) ── */}
+      {/* Main Frosted Obsidian Roof Deck */}
       <div
         className={`group relative min-w-[220px] max-w-[300px] ${activeShapeClass} transition-[border-radius,border-color,box-shadow] duration-200 border ${
           selected
@@ -260,176 +181,10 @@ function ThreeDimensionalCard({
           backdropFilter: "blur(18px)",
           WebkitBackdropFilter: "blur(18px)",
           transformStyle: "preserve-3d",
-          transform: is2D ? "none" : `translateZ(${buildingHeight}px)`,
+          transform: is2D ? "none" : "translateZ(20px)",
           boxShadow: monolithBoxShadow,
         }}
       >
-        {/* ── 3D Architectural Skyscraper Tower Body (Extrudes Down to Street Z=0) ── */}
-        {!is2D && (
-          <>
-            {/* 1. South Facade (Front face facing viewer/street) */}
-            <div
-              className="absolute left-0 right-0 top-full pointer-events-none select-none overflow-hidden flex flex-col justify-between"
-              style={{
-                height: `${buildingHeight}px`,
-                transformOrigin: "top center",
-                transform: "rotateX(-90deg)",
-                background: "linear-gradient(180deg, #181b22 0%, #0d0f14 100%)",
-                borderLeft: "1px solid rgba(255, 255, 255, 0.15)",
-                borderRight: "1px solid rgba(255, 255, 255, 0.15)",
-                borderBottom: `2px solid ${selected ? theme.accent : theme.accentDark}`,
-                boxShadow: `inset 0 0 16px rgba(0, 0, 0, 0.85), 0 0 18px ${theme.floorGlow}`,
-              }}
-            >
-              {/* Floor Stories with Glowing Window Grid */}
-              <div className="flex-1 flex flex-col justify-around py-0.5">
-                {storyList.map((storyNum) => (
-                  <div
-                    key={storyNum}
-                    className="flex items-center justify-between gap-1.5 px-2 py-0.5 border-b border-white/[0.06]"
-                  >
-                    <span className="text-[7px] font-mono text-zinc-500 font-bold shrink-0">
-                      L{storyNum}
-                    </span>
-                    {/* Window Row Matrix */}
-                    <div className="flex-1 flex items-center justify-end gap-1">
-                      {[0, 1, 2, 3, 4, 5].map((col) => {
-                        const isLit = getWindowLit(id, storyNum, col);
-                        const winColor = getWindowColor(id, storyNum, col, theme);
-                        return (
-                          <div
-                            key={col}
-                            className="w-2.5 h-1.5 rounded-[1px] transition-colors"
-                            style={{
-                              background: isLit ? winColor : "#0b0d13",
-                              boxShadow: isLit ? `0 0 6px ${winColor}` : "none",
-                              border: isLit ? "none" : "1px solid rgba(255, 255, 255, 0.04)",
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Ground-Level Street Entrance Lobby */}
-              <div
-                className="h-4.5 px-2.5 flex items-center justify-between border-t border-white/[0.1] shrink-0"
-                style={{
-                  background: `linear-gradient(90deg, rgba(10,12,16,0.95), ${theme.floorGlow}, rgba(10,12,16,0.95))`,
-                }}
-              >
-                <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[6.5px] font-mono font-bold tracking-widest text-zinc-300 uppercase">
-                    MAIN ENTRANCE
-                  </span>
-                </div>
-                {/* Lit Entrance Portal Doors */}
-                <div className="flex items-center gap-0.5">
-                  <div
-                    className="w-2.5 h-2.5 rounded-[1px] border border-white/40"
-                    style={{ background: theme.accent, boxShadow: `0 0 6px ${theme.accent}` }}
-                  />
-                  <div
-                    className="w-2.5 h-2.5 rounded-[1px] border border-white/40"
-                    style={{ background: theme.accent, boxShadow: `0 0 6px ${theme.accent}` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 2. West Wall (Left flank) */}
-            <div
-              className="absolute top-0 bottom-0 right-full pointer-events-none select-none overflow-hidden flex flex-col justify-around py-1"
-              style={{
-                width: `${buildingHeight}px`,
-                transformOrigin: "right center",
-                transform: "rotateY(-90deg)",
-                background: "linear-gradient(90deg, #0e1015 0%, #171920 100%)",
-                borderTop: "1px solid rgba(255, 255, 255, 0.12)",
-                borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-                borderLeft: `1.5px solid ${theme.accentDark}`,
-              }}
-            >
-              <div className="h-full flex items-center justify-around px-1">
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-3/4 w-1 rounded-[1px]"
-                    style={{
-                      background: i % 2 === 0 ? "rgba(255, 255, 255, 0.08)" : theme.floorGlow,
-                      border: "1px solid rgba(255, 255, 255, 0.05)",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* 3. East Wall (Right flank) */}
-            <div
-              className="absolute top-0 bottom-0 left-full pointer-events-none select-none overflow-hidden flex flex-col justify-around py-1"
-              style={{
-                width: `${buildingHeight}px`,
-                transformOrigin: "left center",
-                transform: "rotateY(90deg)",
-                background: "linear-gradient(270deg, #0e1015 0%, #171920 100%)",
-                borderTop: "1px solid rgba(255, 255, 255, 0.12)",
-                borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-                borderRight: `1.5px solid ${theme.accentDark}`,
-              }}
-            >
-              <div className="h-full flex items-center justify-around px-1">
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-3/4 w-1 rounded-[1px]"
-                    style={{
-                      background: i % 2 === 0 ? "rgba(255, 255, 255, 0.08)" : theme.floorGlow,
-                      border: "1px solid rgba(255, 255, 255, 0.05)",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* 4. North Wall (Back side) */}
-            <div
-              className="absolute left-0 right-0 bottom-full pointer-events-none select-none overflow-hidden"
-              style={{
-                height: `${buildingHeight}px`,
-                transformOrigin: "bottom center",
-                transform: "rotateX(90deg)",
-                background: "linear-gradient(0deg, #181b22 0%, #0d0f14 100%)",
-                borderLeft: "1px solid rgba(255, 255, 255, 0.12)",
-                borderRight: "1px solid rgba(255, 255, 255, 0.12)",
-                borderTop: `1.5px solid ${theme.accentDark}`,
-              }}
-            />
-
-            {/* 5. Rooftop Communications Spire Antenna with Blinking Aviation Light */}
-            <div
-              className="absolute -top-6 right-3 pointer-events-none flex flex-col items-center z-30"
-              style={{
-                transform: "translateZ(18px)",
-                transformStyle: "preserve-3d",
-              }}
-            >
-              {/* Blinking Aviation Warning Light Beacon */}
-              <div className="relative flex items-center justify-center">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping opacity-75" />
-                <span
-                  className="absolute w-1.5 h-1.5 rounded-full bg-red-500"
-                  style={{ boxShadow: "0 0 8px #ef4444" }}
-                />
-              </div>
-              {/* Vertical Antenna Needle Mast */}
-              <div className="w-[1.5px] h-4.5 bg-gradient-to-t from-zinc-500 via-zinc-300 to-white" />
-            </div>
-          </>
-        )}
-
         {/* Top Micro-Circuit Roof Edge Light */}
         <div
           className="pointer-events-none absolute top-0 left-5 right-5 h-[1.5px] opacity-80 group-hover:opacity-100 transition-opacity z-10"
@@ -512,7 +267,7 @@ function ThreeDimensionalCard({
           {/* Text & Telemetry */}
           <div className="flex flex-col min-w-0 flex-1">
             {/* Telemetry Row */}
-            <div className="flex items-center justify-between gap-1.5 mb-1">
+            <div className="flex items-center justify-between gap-2 mb-1">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span
                   className={`w-1.5 h-1.5 rounded-full shrink-0 ${
@@ -544,27 +299,14 @@ function ThreeDimensionalCard({
                 </span>
               </div>
 
-              {/* 3D Action & Altitude Badges */}
+              {/* Altitude Badge */}
               {!is2D && (
-                <div className="flex items-center gap-1 shrink-0">
-                  {/* Inspect / Closeup View Button */}
-                  <button
-                    onClick={handleInspectBuilding}
-                    className="p-1 rounded bg-white/[0.05] hover:bg-white/[0.14] border border-white/[0.08] hover:border-white/20 text-zinc-400 hover:text-white transition-all cursor-pointer active:scale-90 flex items-center gap-1"
-                    title="Closeup View: Inspect building architecture"
-                  >
-                    <Eye size={10} className="text-zinc-300" />
-                    <span className="text-[8px] font-mono hidden group-hover:inline">Inspect</span>
-                  </button>
-
-                  {/* Building Elevation Badge */}
-                  <span
-                    className="px-1.5 py-[1px] rounded bg-white/[0.04] border border-white/[0.08] text-[9px] font-mono text-zinc-400 shrink-0"
-                    title={`3D Building Elevation: ${elevation}m (${storiesCount} Stories)`}
-                  >
-                    +{elevation}m
-                  </span>
-                </div>
+                <span
+                  className="px-1.5 py-[1px] rounded bg-white/[0.04] border border-white/[0.08] text-[9px] font-mono text-zinc-400 shrink-0"
+                  title={`3D Elevation: ${elevation}m`}
+                >
+                  +{elevation}m
+                </span>
               )}
             </div>
 
@@ -591,17 +333,6 @@ function ThreeDimensionalCard({
               >
                 {label || `New ${typeLabel}`}
               </span>
-            )}
-
-            {/* Expanded Telemetry in Closeup View */}
-            {isCloseup && selected && (
-              <div className="mt-1.5 pt-1.5 border-t border-white/[0.08] flex items-center justify-between text-[8px] font-mono text-zinc-400 animate-in fade-in duration-200">
-                <span className="flex items-center gap-1 text-zinc-300">
-                  <Building2 size={9} className="text-blue-400" />
-                  <span>FL {storiesCount} • {elevation}M TOWER</span>
-                </span>
-                <span className="text-emerald-400 font-bold">OPERATIONAL</span>
-              </div>
             )}
 
             {children}

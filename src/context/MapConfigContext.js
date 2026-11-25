@@ -25,7 +25,7 @@ export const MapConfigProvider = ({ children }) => {
 
       const savedViewMode = localStorage.getItem("helix-view-mode");
       if (savedViewMode) {
-        setViewMode(savedViewMode);
+        setViewMode(savedViewMode === "2d" || savedViewMode === "3d-topdown" ? "2d" : "3d");
       }
 
       const savedPitch = localStorage.getItem("helix-canvas-pitch");
@@ -56,37 +56,29 @@ export const MapConfigProvider = ({ children }) => {
     }
   };
 
-  const changeViewMode = (mode) => {
-    setViewMode(mode);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("helix-view-mode", mode);
-    }
-    if (mode === "2d" || mode === "3d-topdown") {
-      setCanvasPitch(0);
-      setCanvasYaw(0);
-    } else if (mode === "3d-street") {
-      setCanvasPitch(54);
-      setCanvasYaw(-8);
-    } else if (mode === "3d-closeup") {
-      setCanvasPitch(36);
-      setCanvasYaw(-4);
-    } else if (mode === "3d-isometric") {
-      setCanvasPitch(42);
-      setCanvasYaw(-28);
-    } else {
-      // Standard 3D Orbit / Perspective
-      setCanvasPitch(28);
-      setCanvasYaw(-6);
-    }
-  };
+// In MapConfigContext.js
+const changeViewMode = (mode) => {
+  const normalized = mode === "2d" || mode === "3d-topdown" ? "2d" : "3d";
+  setViewMode(normalized);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("helix-view-mode", normalized);
+  }
+  if (normalized === "2d") {
+    setCanvasPitch(0);
+    setCanvasYaw(0);
+  } else if (canvasPitch === 0) {
+    setCanvasPitch(28);
+    setCanvasYaw(-6);
+  }
+};
 
-  const changeCanvasPitch = (pitch) => {
-    const val = Math.max(0, Math.min(60, pitch));
-    setCanvasPitch(val);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("helix-canvas-pitch", String(val));
-    }
-  };
+const changeCanvasPitch = (pitch) => {
+  const val = Math.max(0, Math.min(75, pitch)); // Raised from 60 to 75
+  setCanvasPitch(val);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("helix-canvas-pitch", String(val));
+  }
+};
 
   const changeCanvasYaw = (yaw) => {
     const val = Math.max(-45, Math.min(45, yaw));
