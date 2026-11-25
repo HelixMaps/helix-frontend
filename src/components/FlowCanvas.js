@@ -179,10 +179,15 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         try {
           const token = await getToken();
           if (token) {
+            // Only flush if map actually exists in active sessions list
+            const targetSession = sessionsRef.current.find((s) => s._id === prevSessionId);
+            if (!targetSession || targetSession.isDraft) return;
             await saveMapGraph(token, prevSessionId, ns, es, currentUserEmail);
           }
         } catch (err) {
-          console.error(`[Unmount Flush] Failed to flush graph for map ${prevSessionId}:`, err);
+          if (!err?.message?.includes("not found")) {
+            console.error(`[Unmount Flush] Failed to flush graph for map ${prevSessionId}:`, err);
+          }
         }
       };
       flushSave();
@@ -344,6 +349,8 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
           }
           isSavingDraftRef.current = false;
         } else {
+          const targetSession = sessionsRef.current.find((s) => s._id === activeSessionId);
+          if (!targetSession || targetSession.isDraft) return;
           await saveMapGraph(token, activeSessionId, nodes, edges, currentUserEmail);
         }
       } catch (err) {

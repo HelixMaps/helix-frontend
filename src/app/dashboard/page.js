@@ -31,11 +31,11 @@ function DashboardContent() {
   const toast = useToast();
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
-  const currentUserEmail = user?.primaryEmailAddress?.emailAddress || "";
+  const currentUserEmail = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || "";
   const router = useRouter();
   const searchParams = useSearchParams();
   const isGuest = searchParams.get("try") === "true";
-  const urlMapId = searchParams.get("map") || searchParams.get("id");
+  const urlMapId = searchParams.get("map") || searchParams.get("mapId") || searchParams.get("id");
 
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
@@ -141,6 +141,15 @@ function DashboardContent() {
             } catch (directErr) {
               console.warn("Direct map fetch failed:", directErr);
               toast.error("Mind map could not be accessed or does not exist.", "Map Unavailable");
+              // Clean dead/invalid query parameter from URL so it doesn't cause recurring errors
+              try {
+                const params = new URLSearchParams(window.location.search);
+                params.delete("map");
+                params.delete("mapId");
+                params.delete("id");
+                const cleanUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+                window.history.replaceState(null, "", cleanUrl);
+              } catch (e) {}
             }
           }
         }
@@ -235,36 +244,64 @@ function DashboardContent() {
   };
 
   // Called when user confirms title in New Mind Map Modal
-  const handleConfirmCreateMap = (chosenTitle) => {
+  const handleConfirmCreateMap = async (chosenTitle) => {
     const title = chosenTitle?.trim() || "Untitled Mind Map";
-    const draftId = `draft-${Date.now()}`;
+    setIsCreateModalOpen(false);
+    setIsMobileSidebarOpen(false);
+
     const initialNode = {
       id: `root-${Date.now()}`,
       type: "idea",
       data: { label: title, summary: "", elevation: 60 },
       position: { x: 250, y: 150 },
     };
-    const newDraftMap = {
-      _id: draftId,
-      title,
-      isDraft: true,
-      isPinned: false,
-      nodes: [initialNode],
-      edges: [],
-      styleConfig: {
-        nodeShape: "rounded",
-        edgeStyle: "smoothstep"
-      }
+    const styleConfig = {
+      nodeShape: "rounded",
+      edgeStyle: "smoothstep"
     };
 
-    // Replace any previous unmodified empty drafts
-    setSessions((prev) => [
-      newDraftMap,
-      ...prev.filter((s) => !s.isDraft || !isMapUnmodified(s))
-    ]);
-    setActiveSessionId(draftId);
-    setIsCreateModalOpen(false);
-    setIsMobileSidebarOpen(false);
+    if (isGuest) {
+      const draftId = `draft-${Date.now()}`;
+      const newDraftMap = {
+        _id: draftId,
+        title,
+        isDraft: true,
+        isPinned: false,
+        nodes: [initialNode],
+        edges: [],
+        styleConfig
+      };
+      setSessions((prev) => [
+        newDraftMap,
+        ...prev.filter((s) => !s.isDraft || !isMapUnmodified(s))
+      ]);
+      setActiveSessionId(draftId);
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const created = await createMap(
+        token,
+        title,
+        null,
+        null,
+        { nodes: [initialNode], edges: [], styleConfig },
+        currentUserEmail
+      );
+
+      setSessions((prev) => [
+        created,
+        ...prev.filter((s) => !s.isDraft || !isMapUnmodified(s))
+      ]);
+      setActiveSessionId(created._id);
+      toast.success(`Created "${title}"`, "Map Created");
+    } catch (err) {
+      console.error("Failed to create map on server:", err);
+      toast.error(err.message || "Failed to create mind map", "Creation Error");
+    }
   };
 
   const handleRenameSession = async (id, newTitle) => {
