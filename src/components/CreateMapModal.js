@@ -1,20 +1,24 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { FolderPlus, X, Sparkles } from "lucide-react";
+import { FolderPlus, X, Sparkles, Loader2 } from "lucide-react";
 
 /**
  * CreateMapModal
  * Modal prompting user to name their new mind map with default value "Untitled Mind Map".
- * Allows user to change it and save it.
+ * Allows user to change it, displays a loader during creation, and saves it.
  */
-export default function CreateMapModal({ isOpen, onClose, onSubmit }) {
+export default function CreateMapModal({ isOpen, onClose, onSubmit, isLoading = false }) {
   const [title, setTitle] = useState("Untitled Mind Map");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef(null);
+
+  const isBusy = isLoading || isSubmitting;
 
   useEffect(() => {
     if (isOpen) {
       setTitle("Untitled Mind Map");
+      setIsSubmitting(false);
       // Focus and select the text on open
       setTimeout(() => {
         if (inputRef.current) {
@@ -27,7 +31,7 @@ export default function CreateMapModal({ isOpen, onClose, onSubmit }) {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (!isOpen) return;
+      if (!isOpen || isBusy) return;
       if (e.key === "Escape") {
         e.preventDefault();
         onClose();
@@ -35,20 +39,28 @@ export default function CreateMapModal({ isOpen, onClose, onSubmit }) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, isBusy, onClose]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isBusy) return;
     const finalTitle = title.trim() || "Untitled Mind Map";
-    onSubmit(finalTitle);
+    try {
+      setIsSubmitting(true);
+      await onSubmit(finalTitle);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div
       className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in-0 duration-200 select-none"
-      onClick={onClose}
+      onClick={() => {
+        if (!isBusy) onClose();
+      }}
     >
       <div
         className="relative w-full max-w-md bg-zinc-950/95 border border-zinc-700/80 rounded-2xl p-6 shadow-[0_0_50px_rgba(59,130,246,0.18)] duration-200 animate-in zoom-in-95 overflow-hidden"
@@ -79,7 +91,10 @@ export default function CreateMapModal({ isOpen, onClose, onSubmit }) {
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/70 transition-colors cursor-pointer"
+            disabled={isBusy}
+            className={`p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/70 transition-colors ${
+              isBusy ? "opacity-30 cursor-not-allowed pointer-events-none" : "cursor-pointer"
+            }`}
             title="Close"
           >
             <X size={16} />
@@ -101,10 +116,15 @@ export default function CreateMapModal({ isOpen, onClose, onSubmit }) {
               ref={inputRef}
               type="text"
               value={title}
+              disabled={isBusy}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Project Roadmap"
               maxLength={80}
-              className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-750 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-all"
+              className={`w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-750 rounded-xl text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-all ${
+                isBusy
+                  ? "opacity-60 cursor-not-allowed border-zinc-800"
+                  : "focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              }`}
             />
           </div>
 
@@ -113,15 +133,32 @@ export default function CreateMapModal({ isOpen, onClose, onSubmit }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:bg-zinc-850 border border-zinc-800 transition-all cursor-pointer"
+              disabled={isBusy}
+              className={`px-4 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:bg-zinc-850 border border-zinc-800 transition-all ${
+                isBusy ? "opacity-30 cursor-not-allowed pointer-events-none" : "cursor-pointer"
+              }`}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white text-xs font-semibold shadow-lg shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+              disabled={isBusy}
+              className={`px-5 py-2 rounded-xl text-white text-xs font-semibold shadow-lg transition-all flex items-center gap-2 ${
+                isBusy
+                  ? "bg-blue-600/70 cursor-not-allowed opacity-90 shadow-none"
+                  : "bg-blue-600 hover:bg-blue-500 active:scale-[0.98] cursor-pointer shadow-blue-500/20"
+              }`}
             >
-              Create Map
+              {isBusy ? (
+                <>
+                  <Loader2 size={14} className="animate-spin text-white" />
+                  <span>Creating Map...</span>
+                </>
+              ) : (
+                <>
+                  <span>Create Map</span>
+                </>
+              )}
             </button>
           </div>
         </form>

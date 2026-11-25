@@ -42,6 +42,7 @@ function DashboardContent() {
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreatingMap, setIsCreatingMap] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
@@ -136,44 +137,8 @@ function DashboardContent() {
 
     if (!isSignedIn) return;
 
-    // If projects are already loaded, only handle switching to an external urlMapId if different
-    if (hasLoadedProjectsRef.current) {
-      if (!urlMapId || urlMapId === activeSessionIdRef.current) {
-        return;
-      }
-      setSessions((prev) => {
-        const match = prev.find((s) => s._id === urlMapId);
-        if (match) {
-          setActiveSessionId(urlMapId);
-        } else {
-          // Fetch map directly if not in user's loaded projects (e.g. shared with user)
-          (async () => {
-            try {
-              const token = await getToken();
-              if (!token) return;
-              const directMap = await fetchMap(token, urlMapId, currentUserEmail);
-              if (directMap) {
-                setSessions((current) => [directMap, ...current.filter((s) => s._id !== directMap._id)]);
-                setActiveSessionId(directMap._id);
-              }
-            } catch (err) {
-              console.warn("Direct map fetch failed:", err);
-              toast.error("Mind map could not be accessed or does not exist.", "Map Unavailable");
-              try {
-                const params = new URLSearchParams(window.location.search);
-                params.delete("map");
-                params.delete("mapId");
-                params.delete("id");
-                const cleanUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
-                window.history.replaceState(null, "", cleanUrl);
-              } catch (e) {}
-            }
-          })();
-        }
-        return prev;
-      });
-      return;
-    }
+    // Only load sessions once on initial mount
+    if (hasLoadedProjectsRef.current) return;
 
     const loadSessions = async () => {
       try {
@@ -319,8 +284,7 @@ function DashboardContent() {
   // Called when user confirms title in New Mind Map Modal
   const handleConfirmCreateMap = async (chosenTitle) => {
     const title = chosenTitle?.trim() || "Untitled Mind Map";
-    setIsCreateModalOpen(false);
-    setIsMobileSidebarOpen(false);
+    setIsCreatingMap(true);
 
     const initialNode = {
       id: `root-${Date.now()}`,
@@ -349,6 +313,9 @@ function DashboardContent() {
         ...prev.filter((s) => !s.isDraft || !isMapUnmodified(s))
       ]);
       setActiveSessionId(draftId);
+      setIsCreatingMap(false);
+      setIsCreateModalOpen(false);
+      setIsMobileSidebarOpen(false);
       return;
     }
 
@@ -370,10 +337,22 @@ function DashboardContent() {
         ...prev.filter((s) => !s.isDraft || !isMapUnmodified(s))
       ]);
       setActiveSessionId(created._id);
+      try {
+        const params = new URLSearchParams(window.location.search);
+        params.set("map", created._id);
+        params.delete("mapId");
+        params.delete("id");
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState(null, "", newUrl);
+      } catch (e) {}
       toast.success(`Created "${title}"`, "Map Created");
+      setIsCreateModalOpen(false);
+      setIsMobileSidebarOpen(false);
     } catch (err) {
       console.error("Failed to create map on server:", err);
       toast.error(err.message || "Failed to create mind map", "Creation Error");
+    } finally {
+      setIsCreatingMap(false);
     }
   };
 
@@ -669,6 +648,7 @@ function DashboardContent() {
 
         {activeSessionId && (
           <FlowCanvas 
+            key={activeSessionId}
             activeSessionId={activeSessionId} 
             setActiveSessionId={setActiveSessionId}
             getToken={getToken} 
@@ -745,7 +725,12 @@ function DashboardContent() {
       {/* ── 7. Create Mind Map Modal ── */}
       <CreateMapModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        isLoading={isCreatingMap}
+        onClose={() => {
+          if (!isCreatingMap) {
+            setIsCreateModalOpen(false);
+          }
+        }}
         onSubmit={handleConfirmCreateMap}
       />
 

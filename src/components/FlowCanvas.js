@@ -243,6 +243,19 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
           return;
         }
 
+        if (currentSession && currentSession.nodes && currentSession.nodes.length > 0 && active) {
+          setNodes(currentSession.nodes);
+          setEdges(currentSession.edges || []);
+          if (currentSession.styleConfig) {
+            if (currentSession.styleConfig.nodeShape) {
+              changeNodeShape(currentSession.styleConfig.nodeShape);
+            }
+            if (currentSession.styleConfig.edgeStyle) {
+              changeEdgeStyle(currentSession.styleConfig.edgeStyle);
+            }
+          }
+        }
+
         const token = await getToken();
         if (!token) return;
         const mapData = await fetchMap(token, activeSessionId, currentUserEmail);
