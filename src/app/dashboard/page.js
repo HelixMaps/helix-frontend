@@ -29,9 +29,14 @@ const isMapUnmodified = (map) => {
 
 function DashboardContent() {
   const toast = useToast();
-  const { isLoaded, isSignedIn, getToken } = useAuth();
-  const { user } = useUser();
+  const { isLoaded: isAuthLoaded, isSignedIn, getToken } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const isLoaded = isAuthLoaded && isUserLoaded;
   const currentUserEmail = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || "";
+  const currentUserName =
+    (user?.fullName || "").trim() ||
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+    (user?.username || "").trim();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isGuest = searchParams.get("try") === "true";
@@ -74,10 +79,12 @@ function DashboardContent() {
     }
   }, [rawUrlMap]);
 
-  // 1. Redirect to Sign In if signed out and not guest
+  // 1. Redirect to Sign In if signed out and not guest (preserving target URL in redirect_url)
   useEffect(() => {
     if (isLoaded && !isSignedIn && !isGuest) {
-      router.replace("/sign-in");
+      const redirectUrl = typeof window !== "undefined" ? window.location.href : "";
+      const signInUrl = redirectUrl ? `/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}` : "/sign-in";
+      router.replace(signInUrl);
     }
   }, [isLoaded, isSignedIn, isGuest, router]);
 
@@ -135,9 +142,10 @@ function DashboardContent() {
       return;
     }
 
-    if (!isSignedIn) return;
+    // Wait until Clerk auth AND user profile have both finished loading
+    if (!isLoaded || !isSignedIn) return;
 
-    // Only load sessions once on initial mount
+    // Only load sessions once on initial mount after user credentials resolve
     if (hasLoadedProjectsRef.current) return;
 
     const loadSessions = async () => {
@@ -146,20 +154,40 @@ function DashboardContent() {
         setLoadError(null);
         const token = await getToken();
         if (!token) return;
-        
+
+        // Fetch user's own maps and shared maps where user is a team member
         const data = await fetchProjects(token, {}, currentUserEmail);
         let projectList = data || [];
         let selectedId = null;
 
-        // If URL requested a specific map ID, check if it's in user's list or fetch directly
-        if (urlMapId) {
-          const match = projectList.find((s) => s._id === urlMapId);
+        // Determine target map ID from urlMapId or directly from window.location
+        let targetMapId = urlMapId;
+        if (!targetMapId && typeof window !== "undefined") {
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get("map") || params.get("mapId") || params.get("id");
+            if (raw && !raw.startsWith("draft-") && raw !== "local-default") {
+              targetMapId = raw;
+            }
+          } catch (e) {}
+        }
+
+        // If URL requested a specific map ID, prioritize it
+        if (targetMapId) {
+          const match = projectList.find((s) => s._id === targetMapId);
           if (match) {
             selectedId = match._id;
           } else {
             try {
-              const directMap = await fetchMap(token, urlMapId, currentUserEmail);
+              const directMap = await fetchMap(token, targetMapId, currentUserEmail);
               if (directMap) {
+                // Ensure permission metadata is set for shared map
+                if (directMap.userId !== user?.id && currentUserEmail) {
+                  const normalizedEmail = currentUserEmail.toLowerCase().trim();
+                  const member = directMap.members?.find((mem) => mem.email && mem.email.toLowerCase().trim() === normalizedEmail);
+                  directMap.isOwner = false;
+                  directMap.userRole = member?.role || "editor";
+                }
                 projectList = [directMap, ...projectList];
                 selectedId = directMap._id;
               }
@@ -221,13 +249,14 @@ function DashboardContent() {
       }
     };
     loadSessions();
-  }, [isSignedIn, getToken, isGuest, currentUserEmail, urlMapId, toast]);
+  }, [isLoaded, isSignedIn, getToken, isGuest, currentUserEmail, urlMapId, toast, user?.id]);
 
   // Synchronize activeSessionId to the browser URL query parameter (?map=<mapId>)
   useEffect(() => {
+    if (!activeSessionId) return; // Do NOT modify URL before active session has resolved!
     try {
       const params = new URLSearchParams(window.location.search);
-      const isDraftOrLocal = !activeSessionId || activeSessionId.startsWith("draft-") || activeSessionId === "local-default";
+      const isDraftOrLocal = activeSessionId.startsWith("draft-") || activeSessionId === "local-default";
 
       if (isDraftOrLocal) {
         if (params.has("map") || params.has("mapId") || params.has("id")) {
@@ -250,6 +279,40 @@ function DashboardContent() {
       // browser environment check
     }
   }, [activeSessionId]);
+
+  // If URL map query changes after initial load, switch to that map
+  useEffect(() => {
+    if (!urlMapId || !hasLoadedProjectsRef.current) return;
+    if (activeSessionId === urlMapId) return;
+
+    const existing = sessions.find((s) => s._id === urlMapId);
+    if (existing) {
+      setActiveSessionId(existing._id);
+    } else {
+      (async () => {
+        try {
+          const token = await getToken();
+          if (!token) return;
+          const directMap = await fetchMap(token, urlMapId, currentUserEmail);
+          if (directMap) {
+            if (directMap.userId !== user?.id && currentUserEmail) {
+              const normalizedEmail = currentUserEmail.toLowerCase().trim();
+              const member = directMap.members?.find((mem) => mem.email && mem.email.toLowerCase().trim() === normalizedEmail);
+              directMap.isOwner = false;
+              directMap.userRole = member?.role || "editor";
+            }
+            setSessions((prev) => {
+              if (prev.some((s) => s._id === directMap._id)) return prev;
+              return [directMap, ...prev];
+            });
+            setActiveSessionId(directMap._id);
+          }
+        } catch (e) {
+          console.warn("Could not switch to map from URL:", e);
+        }
+      })();
+    }
+  }, [urlMapId, activeSessionId, sessions, getToken, currentUserEmail, user?.id]);
 
   // ⌘K / Ctrl+K → open search
   useEffect(() => {
@@ -707,6 +770,7 @@ function DashboardContent() {
         onClose={() => setIsTeamModalOpen(false)}
         activeMap={teamTargetMap || sessions.find((s) => s._id === activeSessionId) || sessions[0]}
         currentUserEmail={currentUserEmail}
+        currentUserName={currentUserName}
         isOwner={
           (teamTargetMap?.isOwner ?? (sessions.find((s) => s._id === activeSessionId)?.isOwner !== false))
         }

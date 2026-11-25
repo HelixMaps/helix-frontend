@@ -250,14 +250,20 @@ export const fetchMapMembers = async (token, mapId, userEmail = "") => {
  * @param {object} payload - { email, role: 'editor'|'viewer' }
  * @param {string} userEmail - Current user's email address
  */
-export const addMapMember = async (token, mapId, { email, role = "editor" }, userEmail = "") => {
+export const addMapMember = async (token, mapId, { email, role = "editor", inviterName = "" }, userEmail = "", userName = "") => {
   if (!mapId) throw new Error("Map ID is required");
   if (!email) throw new Error("Email is required");
 
+  const displayName = userName || inviterName || "";
+  const headers = getHeaders(token, userEmail);
+  if (displayName) {
+    headers["X-User-Name"] = encodeURIComponent(displayName);
+  }
+
   const res = await fetch(`${API_BASE_URL}/maps/${mapId}/members`, {
     method: "POST",
-    headers: getHeaders(token, userEmail),
-    body: JSON.stringify({ email, role }),
+    headers,
+    body: JSON.stringify({ email, role, inviterName: displayName }),
   });
 
   if (!res.ok) {

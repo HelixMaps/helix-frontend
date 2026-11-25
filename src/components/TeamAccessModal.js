@@ -25,6 +25,7 @@ export default function TeamAccessModal({
   onClose,
   activeMap,
   currentUserEmail = "",
+  currentUserName = "",
   isOwner = true,
   onUpdateMap,
   getToken,
@@ -146,8 +147,9 @@ export default function TeamAccessModal({
       const updatedMap = await addMapMember(
         token,
         mapId,
-        { email: trimmedEmail, role: selectedRole },
-        currentUserEmail
+        { email: trimmedEmail, role: selectedRole, inviterName: currentUserName },
+        currentUserEmail,
+        currentUserName
       );
 
       const updatedMembers = updatedMap.members || [];
