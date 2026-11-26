@@ -5,6 +5,8 @@ import {
   Lightbulb,
   CheckSquare,
   Link2,
+  Plus,
+  ChevronUp,
   Box,
   Grid,
   Maximize2,
@@ -65,33 +67,15 @@ export default function SpatialCommandDeck({
       >
         {!isReadOnly ? (
           <>
-            {/* ── 1. Node Spawners ── */}
-            <div className="flex items-center gap-1 pr-2 border-r border-white/[0.06]">
+            {/* ── 1. Unified Node Spawner ── */}
+            <div className="relative flex items-center pr-2 border-r border-white/[0.06]">
               <button
-                onClick={() => onAddNode("idea")}
-                className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-transparent hover:bg-white/[0.05] text-zinc-400 hover:text-zinc-100 text-xs font-medium cursor-pointer active:scale-95 transition-all"
-                title="Spawn Idea Node"
+                onClick={() => onAddNode()}
+                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-transparent hover:bg-white/[0.05] text-zinc-400 hover:text-zinc-100 text-xs font-medium cursor-pointer active:scale-95 transition-all whitespace-nowrap shrink-0"
+                title="Add Node"
               >
-                <Lightbulb size={13} className="text-blue-400/75 group-hover:text-blue-400 transition-colors" />
-                <span className="hidden sm:inline">Idea</span>
-              </button>
-
-              <button
-                onClick={() => onAddNode("task")}
-                className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-transparent hover:bg-white/[0.05] text-zinc-400 hover:text-zinc-100 text-xs font-medium cursor-pointer active:scale-95 transition-all"
-                title="Spawn Task Node"
-              >
-                <CheckSquare size={13} className="text-emerald-400/75 group-hover:text-emerald-400 transition-colors" />
-                <span className="hidden sm:inline">Task</span>
-              </button>
-
-              <button
-                onClick={() => onAddNode("resource")}
-                className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-transparent hover:bg-white/[0.05] text-zinc-400 hover:text-zinc-100 text-xs font-medium cursor-pointer active:scale-95 transition-all"
-                title="Spawn Resource Node"
-              >
-                <Link2 size={13} className="text-amber-400/75 group-hover:text-amber-400 transition-colors" />
-                <span className="hidden sm:inline">Resource</span>
+                <Plus size={13} className="text-zinc-300 group-hover:text-white transition-colors" />
+                <span className="hidden sm:inline">Add Node</span>
               </button>
             </div>
 

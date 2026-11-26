@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
-import { Trash2, Edit2, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, Edit2 } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
+import { NODE_THEME_LIST, getNodeTheme } from "@/config/nodeThemes";
 
 export default function ContextMenu({ id, x, y, node, onClickOutside, onDelete, onEdit }) {
   const ref = useRef(null);
@@ -23,56 +24,16 @@ export default function ContextMenu({ id, x, y, node, onClickOutside, onDelete, 
     e.preventDefault();
   };
 
-  const nodeType = node?.type || "node";
   const nodeLabel = node?.data?.label || "Node";
-
-  // Color configurations based on node type
-  const typeColors = {
-    idea: {
-      text: "text-blue-400",
-      bg: "bg-blue-500/10",
-      border: "border-blue-500/20",
-      label: "Idea",
-    },
-    task: {
-      text: "text-emerald-400",
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/20",
-      label: "Task",
-    },
-    resource: {
-      text: "text-amber-400",
-      bg: "bg-amber-500/10",
-      border: "border-amber-500/20",
-      label: "Resource",
-    },
-  };
-
-  const scheme = typeColors[nodeType] || {
-    text: "text-zinc-400",
-    bg: "bg-zinc-500/10",
-    border: "border-zinc-500/20",
-    label: "Node",
-  };
+  const currentTheme = getNodeTheme(node?.data?.theme);
 
   const { setNodes } = useReactFlow();
 
-  const handleElevate = () => {
+  const handleSetTheme = (newTheme) => {
     setNodes((nds) =>
       nds.map((n) =>
         n.id === id
-          ? { ...n, data: { ...n.data, elevation: (n.data?.elevation || 45) + 25 } }
-          : n
-      )
-    );
-    onClickOutside();
-  };
-
-  const handleDescend = () => {
-    setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, elevation: Math.max(15, (n.data?.elevation || 45) - 25) } }
+          ? { ...n, data: { ...n.data, theme: newTheme } }
           : n
       )
     );
@@ -89,16 +50,39 @@ export default function ContextMenu({ id, x, y, node, onClickOutside, onDelete, 
           "0 4px 0 0 #18181b, 0 24px 48px -4px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
       }}
       onContextMenu={handleContextMenu}
-      className="fixed z-[9999] min-w-[185px] bg-zinc-950/95 backdrop-blur-xl border border-zinc-700/80 rounded-2xl py-2 animate-in fade-in zoom-in-95 duration-100 select-none cursor-default"
+      className="fixed z-[9999] min-w-[195px] bg-zinc-950/95 backdrop-blur-xl border border-zinc-700/80 rounded-2xl py-2 animate-in fade-in zoom-in-95 duration-100 select-none cursor-default"
     >
       {/* Node Info Header */}
       <div className="px-3 py-2 flex flex-col gap-0.5 border-b border-zinc-800/50 mb-1">
-        <span className={`text-[9px] font-bold uppercase tracking-wider ${scheme.text}`}>
-          {scheme.label}
-        </span>
-        <span className="text-xs font-semibold text-zinc-300 truncate max-w-[150px]" title={nodeLabel}>
+        <div className="flex items-center justify-between">
+          <span className={`text-[9px] font-bold uppercase tracking-wider ${currentTheme.drawer.text}`}>
+            {currentTheme.label} Theme
+          </span>
+        </div>
+        <span className="text-xs font-semibold text-zinc-200 truncate max-w-[160px]" title={nodeLabel}>
           {nodeLabel}
         </span>
+      </div>
+
+      {/* Theme Quick Switcher */}
+      <div className="px-3 py-1.5 flex items-center justify-between border-b border-zinc-800/50 mb-1">
+        <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
+          Theme
+        </span>
+        <div className="flex items-center gap-1.5">
+          {NODE_THEME_LIST.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => handleSetTheme(t.key)}
+              title={`Switch to ${t.label} theme`}
+              className={`w-3.5 h-3.5 rounded-full ${t.dotClass} cursor-pointer transition-all ${
+                currentTheme.key === t.key
+                  ? "ring-2 ring-white scale-110 shadow-sm"
+                  : "opacity-40 hover:opacity-100"
+              }`}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Action Items */}
@@ -109,20 +93,6 @@ export default function ContextMenu({ id, x, y, node, onClickOutside, onDelete, 
         >
           <Edit2 size={13.5} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
           <span>Edit Title</span>
-        </button>
-        <button
-          onClick={handleElevate}
-          className="w-full px-2.5 py-1.5 text-left text-xs font-medium text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 flex items-center gap-2.5 transition-all duration-150 rounded-lg cursor-pointer group"
-        >
-          <ArrowUp size={13.5} className="text-zinc-500 group-hover:text-blue-400 transition-colors" />
-          <span>Levitate Higher (+Z)</span>
-        </button>
-        <button
-          onClick={handleDescend}
-          className="w-full px-2.5 py-1.5 text-left text-xs font-medium text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 flex items-center gap-2.5 transition-all duration-150 rounded-lg cursor-pointer group"
-        >
-          <ArrowDown size={13.5} className="text-zinc-500 group-hover:text-blue-400 transition-colors" />
-          <span>Descend Lower (-Z)</span>
         </button>
         <button
           onClick={() => onDelete(id)}

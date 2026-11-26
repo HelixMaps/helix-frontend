@@ -2,38 +2,17 @@
 
 import React, { memo } from "react";
 import { Handle } from "@xyflow/react";
-
-const HANDLE_COLORS = {
-  emerald: {
-    ring: "hover:ring-emerald-400/50",
-    glow: "0 0 10px rgba(16, 185, 129, 0.85)",
-    core: "#34d399",
-  },
-  cyan: {
-    ring: "hover:ring-cyan-400/50",
-    glow: "0 0 10px rgba(34, 211, 238, 0.85)",
-    core: "#22d3ee",
-  },
-  blue: {
-    ring: "hover:ring-blue-400/50",
-    glow: "0 0 10px rgba(59, 130, 246, 0.85)",
-    core: "#60a5fa",
-  },
-  amber: {
-    ring: "hover:ring-amber-400/50",
-    glow: "0 0 10px rgba(245, 158, 11, 0.85)",
-    core: "#fbbf24",
-  },
-};
+import { getNodeTheme } from "@/config/nodeThemes";
 
 function ThreeDimensionalHandle({
   type,
   position,
   id,
-  accentColor = "emerald",
+  accentColor,
   isConnectable = true,
 }) {
-  const palette = HANDLE_COLORS[accentColor] || HANDLE_COLORS.emerald;
+  const theme = getNodeTheme(accentColor);
+  const palette = theme.handle;
 
   return (
     <Handle

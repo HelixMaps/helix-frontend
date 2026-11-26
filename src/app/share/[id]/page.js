@@ -70,19 +70,16 @@ function SharedMapContent({ params }) {
             nodes: [
               {
                 id: "root-1",
-                type: "idea",
                 data: { label: "Central Concept", elevation: 55 },
                 position: { x: 250, y: 150 },
               },
               {
                 id: "child-1",
-                type: "task",
                 data: { label: "Explore Features", elevation: 35 },
                 position: { x: 80, y: 300 },
               },
               {
                 id: "child-2",
-                type: "resource",
                 data: { label: "Interactive 3D Slabs", elevation: 75 },
                 position: { x: 420, y: 300 },
               },
@@ -178,7 +175,7 @@ function SharedMapContent({ params }) {
         await saveMapGraph(token, created._id, currentNodes, currentEdges);
         setForkSuccess(true);
         setTimeout(() => {
-          router.push(`/dashboard`);
+          router.push(`/dashboard?map=${created._id}`);
         }, 1200);
       }
     } catch (err) {

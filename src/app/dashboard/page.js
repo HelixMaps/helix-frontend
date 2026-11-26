@@ -12,6 +12,7 @@ import CreateMapModal from "@/components/CreateMapModal";
 import FlowCanvas from "@/components/FlowCanvas";
 import { fetchProjects, fetchMap, createMap, updateMap, deleteMap, removeMapMember } from "@/service/mapService";
 import { useToast } from "@/context/ToastContext";
+import { DEFAULT_NODE_THEME } from "@/config/nodeThemes";
 
 // Helper to determine if a map is untouched / empty (initial default state)
 const isMapUnmodified = (map) => {
@@ -61,9 +62,16 @@ function DashboardContent() {
 
   const hasLoadedProjectsRef = useRef(false);
   const activeSessionIdRef = useRef(activeSessionId);
+  const sessionsRef = useRef(sessions);
+  const isInitialSyncRef = useRef(true);
+
   useEffect(() => {
     activeSessionIdRef.current = activeSessionId;
   }, [activeSessionId]);
+
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
 
   // Clean invalid draft parameter from URL immediately
   useEffect(() => {
@@ -98,20 +106,17 @@ function DashboardContent() {
         nodes: [
           {
             id: "root-1",
-            type: "idea",
-            data: { label: "Central Idea", elevation: 60 },
+            data: { label: "Central Idea", elevation: 60, theme: "blue" },
             position: { x: 250, y: 150 },
           },
           {
             id: "child-1",
-            type: "task",
-            data: { label: "Define Requirements", elevation: 35 },
+            data: { label: "Define Requirements", elevation: 35, theme: "emerald" },
             position: { x: 100, y: 300 },
           },
           {
             id: "child-2",
-            type: "resource",
-            data: { label: "React Flow Docs", elevation: 85 },
+            data: { label: "React Flow Docs", elevation: 85, theme: "amber" },
             position: { x: 400, y: 300 },
           },
         ],
@@ -212,33 +217,44 @@ function DashboardContent() {
 
         if (selectedId) {
           setActiveSessionId(selectedId);
-        } else if (projectList.length > 0) {
-          // Load first pinned map or just the first map in list
-          const active = projectList.find((s) => s.isPinned) || projectList[0];
-          setActiveSessionId(active._id);
         } else {
-          // If the user has no mind maps, create a default draft (not stored in DB until changed)
-          const defaultDraft = {
-            _id: `draft-${Date.now()}`,
-            title: "My First Mind Map",
-            isDraft: true,
-            isPinned: false,
-            nodes: [
-              {
-                id: `root-${Date.now()}`,
-                type: "idea",
-                data: { label: "Central Idea", elevation: 60 },
-                position: { x: 250, y: 150 },
+          // Check for user's last active map saved in localStorage
+          let savedMapId = null;
+          try {
+            const userKey = user?.id || currentUserEmail || "default";
+            savedMapId = localStorage.getItem(`helix_active_map_${userKey}`);
+          } catch (e) {}
+
+          const savedMatch = savedMapId ? projectList.find((s) => s._id === savedMapId) : null;
+          if (savedMatch) {
+            setActiveSessionId(savedMatch._id);
+          } else if (projectList.length > 0) {
+            // Load first pinned map or just the first map in list
+            const active = projectList.find((s) => s.isPinned) || projectList[0];
+            setActiveSessionId(active._id);
+          } else {
+            // If the user has no mind maps, create a default draft (not stored in DB until changed)
+            const defaultDraft = {
+              _id: `draft-${Date.now()}`,
+              title: "My First Mind Map",
+              isDraft: true,
+              isPinned: false,
+              nodes: [
+                {
+                  id: `root-${Date.now()}`,
+                  data: { label: "Central Idea", elevation: 60, theme: DEFAULT_NODE_THEME },
+                  position: { x: 250, y: 150 },
+                }
+              ],
+              edges: [],
+              styleConfig: {
+                nodeShape: "rounded",
+                edgeStyle: "smoothstep"
               }
-            ],
-            edges: [],
-            styleConfig: {
-              nodeShape: "rounded",
-              edgeStyle: "smoothstep"
-            }
-          };
-          setSessions([defaultDraft]);
-          setActiveSessionId(defaultDraft._id);
+            };
+            setSessions([defaultDraft]);
+            setActiveSessionId(defaultDraft._id);
+          }
         }
       } catch (err) {
         console.error("Error loading mind maps:", err);
@@ -250,6 +266,15 @@ function DashboardContent() {
     };
     loadSessions();
   }, [isLoaded, isSignedIn, getToken, isGuest, currentUserEmail, urlMapId, toast, user?.id]);
+
+  // Save active map ID to localStorage for this user so re-login or refresh restores their last active map
+  useEffect(() => {
+    if (!activeSessionId || activeSessionId.startsWith("draft-") || activeSessionId === "local-default") return;
+    try {
+      const userKey = user?.id || currentUserEmail || "default";
+      localStorage.setItem(`helix_active_map_${userKey}`, activeSessionId);
+    } catch (e) {}
+  }, [activeSessionId, user?.id, currentUserEmail]);
 
   // Synchronize activeSessionId to the browser URL query parameter (?map=<mapId>)
   useEffect(() => {
@@ -272,7 +297,14 @@ function DashboardContent() {
           params.delete("mapId");
           params.delete("id");
           const newUrl = `${window.location.pathname}?${params.toString()}`;
-          window.history.replaceState(null, "", newUrl);
+          if (isInitialSyncRef.current) {
+            window.history.replaceState(null, "", newUrl);
+            isInitialSyncRef.current = false;
+          } else {
+            window.history.pushState(null, "", newUrl);
+          }
+        } else {
+          isInitialSyncRef.current = false;
         }
       }
     } catch (e) {
@@ -280,39 +312,54 @@ function DashboardContent() {
     }
   }, [activeSessionId]);
 
-  // If URL map query changes after initial load, switch to that map
+  // Handle browser back / forward navigation (popstate)
   useEffect(() => {
-    if (!urlMapId || !hasLoadedProjectsRef.current) return;
-    if (activeSessionId === urlMapId) return;
-
-    const existing = sessions.find((s) => s._id === urlMapId);
-    if (existing) {
-      setActiveSessionId(existing._id);
-    } else {
-      (async () => {
-        try {
-          const token = await getToken();
-          if (!token) return;
-          const directMap = await fetchMap(token, urlMapId, currentUserEmail);
-          if (directMap) {
-            if (directMap.userId !== user?.id && currentUserEmail) {
-              const normalizedEmail = currentUserEmail.toLowerCase().trim();
-              const member = directMap.members?.find((mem) => mem.email && mem.email.toLowerCase().trim() === normalizedEmail);
-              directMap.isOwner = false;
-              directMap.userRole = member?.role || "editor";
-            }
-            setSessions((prev) => {
-              if (prev.some((s) => s._id === directMap._id)) return prev;
-              return [directMap, ...prev];
-            });
-            setActiveSessionId(directMap._id);
+    const handlePopState = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const mapIdFromUrl = params.get("map") || params.get("mapId") || params.get("id");
+        if (
+          mapIdFromUrl &&
+          mapIdFromUrl !== activeSessionIdRef.current &&
+          !mapIdFromUrl.startsWith("draft-") &&
+          mapIdFromUrl !== "local-default"
+        ) {
+          const existing = sessionsRef.current.find((s) => s._id === mapIdFromUrl);
+          if (existing) {
+            setActiveSessionId(existing._id);
+          } else {
+            (async () => {
+              try {
+                const token = await getToken();
+                if (!token) return;
+                const directMap = await fetchMap(token, mapIdFromUrl, currentUserEmail);
+                if (directMap) {
+                  if (directMap.userId !== user?.id && currentUserEmail) {
+                    const normalizedEmail = currentUserEmail.toLowerCase().trim();
+                    const member = directMap.members?.find(
+                      (mem) => mem.email && mem.email.toLowerCase().trim() === normalizedEmail
+                    );
+                    directMap.isOwner = false;
+                    directMap.userRole = member?.role || "editor";
+                  }
+                  setSessions((prev) => {
+                    if (prev.some((s) => s._id === directMap._id)) return prev;
+                    return [directMap, ...prev];
+                  });
+                  setActiveSessionId(directMap._id);
+                }
+              } catch (e) {
+                console.warn("Could not load map from popstate URL:", e);
+              }
+            })();
           }
-        } catch (e) {
-          console.warn("Could not switch to map from URL:", e);
         }
-      })();
-    }
-  }, [urlMapId, activeSessionId, sessions, getToken, currentUserEmail, user?.id]);
+      } catch (e) {}
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [getToken, currentUserEmail, user?.id]);
 
   // ⌘K / Ctrl+K → open search
   useEffect(() => {
@@ -351,8 +398,7 @@ function DashboardContent() {
 
     const initialNode = {
       id: `root-${Date.now()}`,
-      type: "idea",
-      data: { label: title, summary: "", elevation: 60 },
+      data: { label: title, summary: "", elevation: 60, theme: DEFAULT_NODE_THEME },
       position: { x: 250, y: 150 },
     };
     const styleConfig = {
@@ -448,11 +494,37 @@ function DashboardContent() {
 
   const handleConfirmDelete = async () => {
     if (deleteTargetId) {
+      const createDefaultDraft = () => ({
+        _id: `draft-${Date.now()}`,
+        title: "My First Mind Map",
+        isDraft: true,
+        isPinned: false,
+        nodes: [
+          {
+            id: `root-${Date.now()}`,
+            data: { label: "Central Idea", elevation: 60, theme: DEFAULT_NODE_THEME },
+            position: { x: 250, y: 150 },
+          }
+        ],
+        edges: [],
+        styleConfig: {
+          nodeShape: "rounded",
+          edgeStyle: "smoothstep"
+        }
+      });
+
       if (isGuest || deleteTargetId?.startsWith("draft-")) {
         setSessions((prev) => {
           const filtered = prev.filter((s) => s._id !== deleteTargetId);
           if (activeSessionId === deleteTargetId) {
-            setActiveSessionId(filtered.length > 0 ? filtered[0]._id : null);
+            if (filtered.length > 0) {
+              setActiveSessionId(filtered[0]._id);
+              return filtered;
+            } else {
+              const draft = createDefaultDraft();
+              setActiveSessionId(draft._id);
+              return [draft];
+            }
           }
           return filtered;
         });
@@ -474,7 +546,14 @@ function DashboardContent() {
         setSessions((prev) => {
           const filtered = prev.filter((s) => s._id !== deleteTargetId);
           if (activeSessionId === deleteTargetId) {
-            setActiveSessionId(filtered.length > 0 ? filtered[0]._id : null);
+            if (filtered.length > 0) {
+              setActiveSessionId(filtered[0]._id);
+              return filtered;
+            } else {
+              const draft = createDefaultDraft();
+              setActiveSessionId(draft._id);
+              return [draft];
+            }
           }
           return filtered;
         });

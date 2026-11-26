@@ -19,6 +19,7 @@ import "@xyflow/react/dist/style.css";
 import IdeaNode from "./nodes/IdeaNode";
 import TaskNode from "./nodes/TaskNode";
 import ResourceNode from "./nodes/ResourceNode";
+import DefaultNode from "./nodes/DefaultNode";
 import ThreeDimensionalEdge, { SharedEdgeDefs } from "./edges/ThreeDimensionalEdge";
 import SpatialCommandDeck from "./SpatialCommandDeck";
 import NodePicker from "./NodePicker";
@@ -30,6 +31,8 @@ import { useMapConfig } from "@/context/MapConfigContext";
 import { Map, Minimize2 } from "lucide-react";
 import { fetchMap, saveMapGraph, createMap } from "@/service/mapService";
 import { useToast } from "@/context/ToastContext";
+import { DEFAULT_NODE_THEME, getNodeTheme } from "@/config/nodeThemes";
+import { getNonOverlappingPosition } from "@/utils/nodePlacement";
 
 // Helper to determine if a map graph has meaningful user modifications from baseline
 const isGraphModified = (currNodes, currEdges, baseline) => {
@@ -51,6 +54,8 @@ const isGraphModified = (currNodes, currEdges, baseline) => {
     if (Math.round(cn.position.y) !== Math.round(bn.position.y)) return true;
     if (cn.data?.label !== bn.data?.label) return true;
     if (cn.data?.summary !== bn.data?.summary) return true;
+    if (cn.data?.theme !== bn.data?.theme) return true;
+    if (cn.data?.elevation !== bn.data?.elevation) return true;
     if (cn.type !== bn.type) return true;
   }
 
@@ -64,11 +69,30 @@ const isGraphModified = (currNodes, currEdges, baseline) => {
   return false;
 };
 
-// Registering our custom 3D nodes
+// Registering our custom 3D nodes.
+// All node types map to the unified DefaultNode to guarantee backward compatibility
+// with existing maps while enforcing a single unified node type.
 const nodeTypes = {
-  idea: IdeaNode,
-  task: TaskNode,
-  resource: ResourceNode,
+  default: DefaultNode,
+  idea: DefaultNode,
+  task: DefaultNode,
+  resource: DefaultNode,
+};
+
+// Builds a single unified node using the configurable default theme.
+const buildNode = (position, theme = DEFAULT_NODE_THEME) => {
+  return {
+    id: `node-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    type: "default",
+    position,
+    className: "!bg-transparent !border-none !p-0 !shadow-none !w-auto",
+    style: { background: "transparent", border: "none", padding: 0 },
+    data: {
+      label: "New Node",
+      theme: theme || DEFAULT_NODE_THEME,
+      elevation: 45,
+    },
+  };
 };
 
 // Registering our custom 3D edge types
@@ -182,6 +206,8 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
             // Only flush if map actually exists in active sessions list
             const targetSession = sessionsRef.current.find((s) => s._id === prevSessionId);
             if (!targetSession || targetSession.isDraft || prevSessionId.startsWith("draft-") || prevSessionId === "local-default") return;
+            const hasChanged = isGraphModified(ns, es, initialBaselineRef.current);
+            if (!hasChanged) return;
             await saveMapGraph(token, prevSessionId, ns, es, currentUserEmail);
           }
         } catch (err) {
@@ -246,6 +272,14 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         if (currentSession && currentSession.nodes && currentSession.nodes.length > 0 && active) {
           setNodes(currentSession.nodes);
           setEdges(currentSession.edges || []);
+          if (!initialBaselineRef.current || initialBaselineRef.current.sessionId !== activeSessionId) {
+            initialBaselineRef.current = {
+              sessionId: activeSessionId,
+              nodes: JSON.parse(JSON.stringify(currentSession.nodes)),
+              edges: JSON.parse(JSON.stringify(currentSession.edges || [])),
+              isDraft: false,
+            };
+          }
           if (currentSession.styleConfig) {
             if (currentSession.styleConfig.nodeShape) {
               changeNodeShape(currentSession.styleConfig.nodeShape);
@@ -364,6 +398,8 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
         } else {
           const targetSession = sessionsRef.current.find((s) => s._id === activeSessionId);
           if (!targetSession || targetSession.isDraft || activeSessionId.startsWith("draft-") || activeSessionId === "local-default") return;
+          const hasChanged = isGraphModified(nodes, edges, initialBaselineRef.current);
+          if (!hasChanged) return;
           await saveMapGraph(token, activeSessionId, nodes, edges, currentUserEmail);
         }
       } catch (err) {
@@ -461,6 +497,38 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
     [isReadOnly, setNodes]
   );
 
+  const handleChangeNodeTheme = useCallback(
+    (nodeId, theme) => {
+      if (isReadOnly) return;
+
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id !== nodeId) return node;
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              theme,
+            },
+          };
+        })
+      );
+
+      setSelectedNode((curr) =>
+        curr && curr.id === nodeId
+          ? {
+              ...curr,
+              data: {
+                ...curr.data,
+                theme,
+              },
+            }
+          : curr
+      );
+    },
+    [isReadOnly, setNodes]
+  );
+
   const onNodeContextMenu = useCallback(
     (event, node) => {
       if (isReadOnly) return;
@@ -519,32 +587,23 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
     (event) => {
       if (isReadOnly) return;
       event.preventDefault();
-      const type = event.dataTransfer.getData("application/reactflow");
-      if (!type) return;
 
-      const position = screenToFlowPosition({
+      const targetPos = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
-      const defaultElevations = { idea: 55, task: 35, resource: 75 };
-      const newNode = {
-        id: `${type}-${Date.now()}`,
-        type,
-        position,
-        data: { 
-          label: `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
-          elevation: defaultElevations[type] || 50,
-        },
-      };
-
-      setNodes((nds) => nds.concat(newNode));
+      setNodes((nds) => {
+        const calculatedPos = getNonOverlappingPosition(targetPos, nds);
+        const newNode = buildNode(calculatedPos, DEFAULT_NODE_THEME);
+        return nds.concat(newNode);
+      });
     },
     [isReadOnly, screenToFlowPosition, setNodes]
   );
 
   const addNodeAtCenter = useCallback(
-    (type) => {
+    (theme = DEFAULT_NODE_THEME) => {
       if (isReadOnly) {
         toast.info("You have read-only access to this mind map.", "View Only");
         return;
@@ -552,23 +611,19 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
       const width = window.innerWidth;
       const height = window.innerHeight;
 
-      const position = screenToFlowPosition({
+      const targetCenter = screenToFlowPosition({
         x: width / 2,
         y: height / 2,
       });
 
-      const defaultElevations = { idea: 55, task: 35, resource: 75 };
-      const newNode = {
-        id: `${type}-${Date.now()}`,
-        type,
-        position,
-        data: { 
-          label: `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
-          elevation: defaultElevations[type] || 50,
-        },
-      };
-
-      setNodes((nds) => nds.concat(newNode));
+      setNodes((nds) => {
+        const calculatedPos = getNonOverlappingPosition(targetCenter, nds);
+        const newNode = buildNode(
+          calculatedPos,
+          typeof theme === "string" ? theme : DEFAULT_NODE_THEME
+        );
+        return nds.concat(newNode);
+      });
     },
     [isReadOnly, screenToFlowPosition, setNodes, toast]
   );
@@ -614,6 +669,8 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
       : nodes;
     return base.map((n) => ({
       ...n,
+      className: `${n.className || ""} !bg-transparent !border-none !p-0 !shadow-none !w-auto`.trim(),
+      style: { ...n.style, background: "transparent", border: "none", padding: 0 },
       data: {
         ...n.data,
         isReadOnly,
@@ -960,19 +1017,9 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
                   height={110}
                   className="!bg-zinc-900/95 !backdrop-blur-md !border-zinc-800 !rounded-xl !shadow-2xl"
                   maskColor="rgba(9, 9, 11, 0.75)"
-                  nodeColor={(node) => {
-                    if (node.type === "idea") return "#1e3a8a";
-                    if (node.type === "task") return "#065f46";
-                    if (node.type === "resource") return "#78350f";
-                    return "#18181b";
-                  }}
+                  nodeColor={(node) => getNodeTheme(node.data?.theme).miniMap.color}
                   nodeStrokeWidth={1.5}
-                  nodeStrokeColor={(node) => {
-                    if (node.type === "idea") return "#60a5fa";
-                    if (node.type === "task") return "#34d399";
-                    if (node.type === "resource") return "#fbbf24";
-                    return "#3f3f46";
-                  }}
+                  nodeStrokeColor={(node) => getNodeTheme(node.data?.theme).miniMap.stroke}
                 />
                 <button
                   onClick={() => setIsMiniMapOpen(false)}
