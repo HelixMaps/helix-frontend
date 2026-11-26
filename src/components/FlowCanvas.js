@@ -20,6 +20,7 @@ import IdeaNode from "./nodes/IdeaNode";
 import TaskNode from "./nodes/TaskNode";
 import ResourceNode from "./nodes/ResourceNode";
 import DefaultNode from "./nodes/DefaultNode";
+import NoteNode from "./nodes/NoteNode";
 import ThreeDimensionalEdge, { SharedEdgeDefs } from "./edges/ThreeDimensionalEdge";
 import SpatialCommandDeck from "./SpatialCommandDeck";
 import NodePicker from "./NodePicker";
@@ -53,10 +54,13 @@ const isGraphModified = (currNodes, currEdges, baseline) => {
     if (Math.round(cn.position.x) !== Math.round(bn.position.x)) return true;
     if (Math.round(cn.position.y) !== Math.round(bn.position.y)) return true;
     if (cn.data?.label !== bn.data?.label) return true;
+    if (cn.data?.text !== bn.data?.text) return true;
     if (cn.data?.summary !== bn.data?.summary) return true;
     if (cn.data?.theme !== bn.data?.theme) return true;
     if (cn.data?.elevation !== bn.data?.elevation) return true;
     if (cn.type !== bn.type) return true;
+    if (Math.round(cn.style?.width || cn.width || 0) !== Math.round(bn.style?.width || bn.width || 0)) return true;
+    if (Math.round(cn.style?.height || cn.height || 0) !== Math.round(bn.style?.height || bn.height || 0)) return true;
   }
 
   // Check edges
@@ -69,14 +73,15 @@ const isGraphModified = (currNodes, currEdges, baseline) => {
   return false;
 };
 
-// Registering our custom 3D nodes.
-// All node types map to the unified DefaultNode to guarantee backward compatibility
-// with existing maps while enforcing a single unified node type.
+// Registering our custom nodes.
+// All mindmap node types map to the unified DefaultNode to guarantee backward compatibility,
+// and 'note' maps to NoteNode for transparent handwriting canvas notes.
 const nodeTypes = {
   default: DefaultNode,
   idea: DefaultNode,
   task: DefaultNode,
   resource: DefaultNode,
+  note: NoteNode,
 };
 
 // Builds a single unified node using the configurable default theme.
@@ -91,6 +96,31 @@ const buildNode = (position, theme = DEFAULT_NODE_THEME) => {
       label: "New Node",
       theme: theme || DEFAULT_NODE_THEME,
       elevation: 45,
+    },
+  };
+};
+
+// Builds a transparent canvas note region
+const buildNoteNode = (
+  position,
+  dimensions = { width: 240, height: 130 },
+  initialText = ""
+) => {
+  return {
+    id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    type: "note",
+    position,
+    style: {
+      width: dimensions.width,
+      height: dimensions.height,
+      background: "transparent",
+      border: "none",
+      padding: 0,
+    },
+    data: {
+      label: initialText,
+      text: initialText,
+      isEditing: true,
     },
   };
 };
@@ -132,6 +162,8 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
   const [isMiniMapOpen, setIsMiniMapOpen] = useState(true);
   const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isDrawingNote, setIsDrawingNote] = useState(false);
+  const [drawingBox, setDrawingBox] = useState(null);
 
   // Synchronize node handle bounds immediately whenever nodeShape or viewMode changes
   useEffect(() => {
@@ -552,6 +584,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
   const onMoveStart = useCallback(() => setMenu(null), [setMenu]);
 
   const onNodeDoubleClick = useCallback((event, node) => {
+    if (node?.type === "note") return; // Notes edit inline
     setSelectedNode(node);
   }, []);
 
@@ -588,10 +621,17 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
       if (isReadOnly) return;
       event.preventDefault();
 
+      const type = event.dataTransfer.getData("application/reactflow");
       const targetPos = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
+
+      if (type === "note") {
+        const newNote = buildNoteNode(targetPos, { width: 240, height: 130 });
+        setNodes((nds) => nds.concat(newNote));
+        return;
+      }
 
       setNodes((nds) => {
         const calculatedPos = getNonOverlappingPosition(targetPos, nds);
@@ -626,6 +666,119 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
       });
     },
     [isReadOnly, screenToFlowPosition, setNodes, toast]
+  );
+
+  const addNoteAtCenter = useCallback(() => {
+    if (isReadOnly) {
+      toast.info("You have read-only access to this mind map.", "View Only");
+      return;
+    }
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    const targetCenter = screenToFlowPosition({
+      x: width / 2,
+      y: height / 2,
+    });
+
+    setNodes((nds) => {
+      const calculatedPos = getNonOverlappingPosition(targetCenter, nds);
+      const newNote = buildNoteNode(calculatedPos, { width: 240, height: 130 });
+      return nds.concat(newNote);
+    });
+  }, [isReadOnly, screenToFlowPosition, setNodes, toast]);
+
+  const toggleNoteDrawingMode = useCallback(() => {
+    if (isReadOnly) return;
+    setIsDrawingNote((prev) => !prev);
+    setDrawingBox(null);
+  }, [isReadOnly]);
+
+  // Keyboard shortcut: 'N' to toggle note drawing mode, 'Esc' to cancel
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target?.closest?.("input, textarea, [contenteditable='true']")) return;
+      if (isReadOnly) return;
+
+      if ((e.key === "n" || e.key === "N") && !e.metaKey && !e.ctrlKey) {
+        setIsDrawingNote((prev) => !prev);
+        setDrawingBox(null);
+      } else if (e.key === "Escape" && isDrawingNote) {
+        setIsDrawingNote(false);
+        setDrawingBox(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isReadOnly, isDrawingNote]);
+
+  // Region Drawing pointer handlers: click or drag to create a note region
+  const handleDrawingPointerDown = useCallback(
+    (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const startClient = { x: e.clientX, y: e.clientY };
+      const startFlow = screenToFlowPosition(startClient);
+
+      setDrawingBox({
+        startClient,
+        currentClient: startClient,
+        startFlow,
+        currentFlow: startFlow,
+      });
+    },
+    [screenToFlowPosition]
+  );
+
+  const handleDrawingPointerMove = useCallback(
+    (e) => {
+      if (!drawingBox) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const currentClient = { x: e.clientX, y: e.clientY };
+      const currentFlow = screenToFlowPosition(currentClient);
+
+      setDrawingBox((prev) =>
+        prev ? { ...prev, currentClient, currentFlow } : null
+      );
+    },
+    [drawingBox, screenToFlowPosition]
+  );
+
+  const handleDrawingPointerUp = useCallback(
+    (e) => {
+      if (!drawingBox) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const flowX1 = drawingBox.startFlow.x;
+      const flowY1 = drawingBox.startFlow.y;
+      const flowX2 = drawingBox.currentFlow.x;
+      const flowY2 = drawingBox.currentFlow.y;
+
+      const width = Math.abs(flowX2 - flowX1);
+      const height = Math.abs(flowY2 - flowY1);
+
+      const isDrag = width > 25 || height > 25;
+      const finalW = isDrag ? Math.max(Math.round(width), 150) : 240;
+      const finalH = isDrag ? Math.max(Math.round(height), 60) : 120;
+      const finalX = isDrag ? Math.min(flowX1, flowX2) : flowX1;
+      const finalY = isDrag ? Math.min(flowY1, flowY2) : flowY1;
+
+      const newNote = buildNoteNode(
+        { x: finalX, y: finalY },
+        { width: finalW, height: finalH }
+      );
+
+      setNodes((nds) => nds.concat(newNote));
+      setIsDrawingNote(false);
+      setDrawingBox(null);
+    },
+    [drawingBox, setNodes]
   );
 
   // Controlled change handlers that only permit node selection for read-only viewers
@@ -669,7 +822,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
       : nodes;
     return base.map((n) => ({
       ...n,
-      className: `${n.className || ""} !bg-transparent !border-none !p-0 !shadow-none !w-auto`.trim(),
+      className: `${n.className || ""} !bg-transparent !border-none !p-0 !shadow-none ${n.type === "note" ? "" : "!w-auto"}`.trim(),
       style: { ...n.style, background: "transparent", border: "none", padding: 0 },
       data: {
         ...n.data,
@@ -938,7 +1091,7 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
       {/* ── Floating Node Picker (Hidden for Viewers) ── */}
       {!isReadOnly && (
         <div className="node-picker-container export-exclude absolute top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-          <NodePicker onAddNode={addNodeAtCenter} />
+          <NodePicker onAddNode={addNodeAtCenter} onAddNote={addNoteAtCenter} />
         </div>
       )}
 
@@ -956,6 +1109,9 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
       <div className="spatial-command-deck export-exclude">
         <SpatialCommandDeck
           onAddNode={addNodeAtCenter}
+          onAddNote={addNoteAtCenter}
+          onToggleNoteMode={toggleNoteDrawingMode}
+          isDrawingNote={isDrawingNote}
           onShare={onShare}
           onOpenTeam={onOpenTeam}
           isReadOnly={isReadOnly}
@@ -968,6 +1124,60 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
 
       {/* ── Shared SVG filter defs for all edges (mounted once) ── */}
       <SharedEdgeDefs />
+
+      {/* ── Interactive Note Region Drawing Overlay ── */}
+      {isDrawingNote && !isReadOnly && (
+        <div
+          className="absolute inset-0 z-30 cursor-crosshair select-none"
+          onPointerDown={handleDrawingPointerDown}
+          onPointerMove={handleDrawingPointerMove}
+          onPointerUp={handleDrawingPointerUp}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setIsDrawingNote(false);
+            setDrawingBox(null);
+          }}
+        />
+      )}
+
+      {/* ── Floating Helper Pill when in Note Drawing Mode ── */}
+      {isDrawingNote && !isReadOnly && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-zinc-950/90 border border-white/20 text-white px-4 py-2 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-150 select-none pointer-events-auto">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="text-xs font-medium text-zinc-200">
+            Click & drag on canvas to create note region · or click once to place
+          </span>
+          <button
+            onClick={() => {
+              setIsDrawingNote(false);
+              setDrawingBox(null);
+            }}
+            className="text-[11px] font-mono bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-zinc-300 hover:text-white transition-colors cursor-pointer"
+          >
+            Esc
+          </button>
+        </div>
+      )}
+
+      {/* ── Drawing Note Region Live Preview ── */}
+      {drawingBox && (
+        <div
+          className="pointer-events-none fixed z-50 border-2 border-dashed border-white/80 rounded-xl bg-white/[0.04] backdrop-blur-[1px] flex flex-col justify-between p-3.5 shadow-2xl"
+          style={{
+            left: Math.min(drawingBox.startClient.x, drawingBox.currentClient.x),
+            top: Math.min(drawingBox.startClient.y, drawingBox.currentClient.y),
+            width: Math.max(Math.abs(drawingBox.currentClient.x - drawingBox.startClient.x), 24),
+            height: Math.max(Math.abs(drawingBox.currentClient.y - drawingBox.startClient.y), 24),
+          }}
+        >
+          <span className="font-note text-2xl text-white/80 select-none canvas-note-shadow">
+            Type note here...
+          </span>
+          <span className="text-[10px] font-mono text-zinc-300 self-end bg-zinc-950/80 px-2 py-0.5 rounded border border-white/10 select-none">
+            {Math.round(Math.abs(drawingBox.currentFlow.x - drawingBox.startFlow.x))} × {Math.round(Math.abs(drawingBox.currentFlow.y - drawingBox.startFlow.y))}
+          </span>
+        </div>
+      )}
 
       {/* ── 3D Transformed Canvas Stage (Infinite Boundless Tilted Dotted Floor) ── */}
       <div
@@ -989,9 +1199,10 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
           onDrop={isReadOnly ? undefined : onDrop}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          nodesDraggable={!isReadOnly}
-          nodesConnectable={!isReadOnly}
-          elementsSelectable={true}
+          nodesDraggable={!isReadOnly && !isDrawingNote}
+          nodesConnectable={!isReadOnly && !isDrawingNote}
+          elementsSelectable={!isDrawingNote}
+          panOnDrag={!isDrawingNote}
           deleteKeyCode={isReadOnly ? null : ["Backspace", "Delete"]}
           fitView
           fitViewOptions={fitViewOptions}
@@ -1017,9 +1228,17 @@ function FlowCanvasInner({ activeSessionId, setActiveSessionId, getToken, isGues
                   height={110}
                   className="!bg-zinc-900/95 !backdrop-blur-md !border-zinc-800 !rounded-xl !shadow-2xl"
                   maskColor="rgba(9, 9, 11, 0.75)"
-                  nodeColor={(node) => getNodeTheme(node.data?.theme).miniMap.color}
+                  nodeColor={(node) =>
+                    node.type === "note"
+                      ? "rgba(255, 255, 255, 0.4)"
+                      : getNodeTheme(node.data?.theme).miniMap.color
+                  }
                   nodeStrokeWidth={1.5}
-                  nodeStrokeColor={(node) => getNodeTheme(node.data?.theme).miniMap.stroke}
+                  nodeStrokeColor={(node) =>
+                    node.type === "note"
+                      ? "rgba(255, 255, 255, 0.8)"
+                      : getNodeTheme(node.data?.theme).miniMap.stroke
+                  }
                 />
                 <button
                   onClick={() => setIsMiniMapOpen(false)}

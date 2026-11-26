@@ -25,8 +25,17 @@ export function layoutNodesHierarchical(nodes, edges) {
     }
   });
 
-  // Find root nodes (in-degree == 0, or fallback to first node)
-  const roots = nodes.filter((n) => (incomingDegree.get(n.id) || 0) === 0);
+  // Find root nodes (in-degree == 0, excluding floating notes without edges)
+  const roots = nodes.filter((n) => {
+    if (
+      n.type === "note" &&
+      (childrenMap.get(n.id) || []).length === 0 &&
+      (incomingDegree.get(n.id) || 0) === 0
+    ) {
+      return false;
+    }
+    return (incomingDegree.get(n.id) || 0) === 0;
+  });
   if (roots.length === 0 && nodes.length > 0) {
     roots.push(nodes[0]);
   }

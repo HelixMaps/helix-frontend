@@ -55,35 +55,37 @@ export default function ContextMenu({ id, x, y, node, onClickOutside, onDelete, 
       {/* Node Info Header */}
       <div className="px-3 py-2 flex flex-col gap-0.5 border-b border-zinc-800/50 mb-1">
         <div className="flex items-center justify-between">
-          <span className={`text-[9px] font-bold uppercase tracking-wider ${currentTheme.drawer.text}`}>
-            {currentTheme.label} Theme
+          <span className={`text-[9px] font-bold uppercase tracking-wider ${node?.type === "note" ? "text-zinc-400" : currentTheme.drawer.text}`}>
+            {node?.type === "note" ? "Canvas Note" : `${currentTheme.label} Theme`}
           </span>
         </div>
         <span className="text-xs font-semibold text-zinc-200 truncate max-w-[160px]" title={nodeLabel}>
-          {nodeLabel}
+          {nodeLabel || (node?.type === "note" ? "Untitled Note" : "Node")}
         </span>
       </div>
 
-      {/* Theme Quick Switcher */}
-      <div className="px-3 py-1.5 flex items-center justify-between border-b border-zinc-800/50 mb-1">
-        <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
-          Theme
-        </span>
-        <div className="flex items-center gap-1.5">
-          {NODE_THEME_LIST.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => handleSetTheme(t.key)}
-              title={`Switch to ${t.label} theme`}
-              className={`w-3.5 h-3.5 rounded-full ${t.dotClass} cursor-pointer transition-all ${
-                currentTheme.key === t.key
-                  ? "ring-2 ring-white scale-110 shadow-sm"
-                  : "opacity-40 hover:opacity-100"
-              }`}
-            />
-          ))}
+      {/* Theme Quick Switcher (standard nodes only) */}
+      {node?.type !== "note" && (
+        <div className="px-3 py-1.5 flex items-center justify-between border-b border-zinc-800/50 mb-1">
+          <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
+            Theme
+          </span>
+          <div className="flex items-center gap-1.5">
+            {NODE_THEME_LIST.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => handleSetTheme(t.key)}
+                title={`Switch to ${t.label} theme`}
+                className={`w-3.5 h-3.5 rounded-full ${t.dotClass} cursor-pointer transition-all ${
+                  currentTheme.key === t.key
+                    ? "ring-2 ring-white scale-110 shadow-sm"
+                    : "opacity-40 hover:opacity-100"
+                }`}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Action Items */}
       <div className="px-1 flex flex-col gap-0.5">
@@ -92,14 +94,14 @@ export default function ContextMenu({ id, x, y, node, onClickOutside, onDelete, 
           className="w-full px-2.5 py-1.5 text-left text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 flex items-center gap-2.5 transition-all duration-150 rounded-lg cursor-pointer group"
         >
           <Edit2 size={13.5} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
-          <span>Edit Title</span>
+          <span>{node?.type === "note" ? "Edit Note" : "Edit Title"}</span>
         </button>
         <button
           onClick={() => onDelete(id)}
           className="w-full px-2.5 py-1.5 text-left text-xs font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 flex items-center gap-2.5 transition-all duration-150 rounded-lg cursor-pointer group"
         >
           <Trash2 size={13.5} className="text-zinc-500 group-hover:text-red-400 transition-colors" />
-          <span>Delete Node</span>
+          <span>{node?.type === "note" ? "Delete Note" : "Delete Node"}</span>
         </button>
       </div>
     </div>

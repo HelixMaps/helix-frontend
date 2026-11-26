@@ -161,3 +161,13 @@ svg.react-flow__edges {
   animation: specular-pulse 3s ease-in-out infinite;
 }
 
+/* ── Canvas Note Attachment Typography ───────────────────────────────── */
+.font-note {
+  font-family: "Caveat", "Kalam", "Segoe Print", "Bradley Hand", "Chalkboard SE", cursive, sans-serif;
+  letter-spacing: 0.015em;
+}
+
+.canvas-note-shadow {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+

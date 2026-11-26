@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Search, X, Workflow } from "lucide-react";
+import { Search, X, Workflow, StickyNote } from "lucide-react";
 import { getNodeTheme } from "@/config/nodeThemes";
 
 // ─── Search Modal ────────────────────────────────────────────────────────────
@@ -114,8 +114,14 @@ function SearchModal({ nodes, onSearch, onClose }) {
                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-zinc-800/60 transition-colors cursor-pointer group text-left"
                   >
                     {/* Icon */}
-                    <div className={`p-1 rounded-md ${theme.drawer.bg} ${theme.drawer.text} border ${theme.drawer.border} shrink-0`}>
-                      <Workflow size={12} />
+                    <div
+                      className={`p-1 rounded-md shrink-0 ${
+                        node.type === "note"
+                          ? "bg-zinc-800 text-zinc-200 border border-zinc-700"
+                          : `${theme.drawer.bg} ${theme.drawer.text} border ${theme.drawer.border}`
+                      }`}
+                    >
+                      {node.type === "note" ? <StickyNote size={12} /> : <Workflow size={12} />}
                     </div>
                     {/* Label with highlighted match */}
                     <span className="text-sm text-zinc-300 truncate">
@@ -129,9 +135,13 @@ function SearchModal({ nodes, onSearch, onClose }) {
                         </>
                       ) : label}
                     </span>
-                    {/* Theme badge */}
-                    <span className={`ml-auto text-[9px] font-bold uppercase tracking-wider ${theme.drawer.text} shrink-0`}>
-                      {theme.label}
+                    {/* Theme/Type badge */}
+                    <span
+                      className={`ml-auto text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+                        node.type === "note" ? "text-zinc-400" : theme.drawer.text
+                      }`}
+                    >
+                      {node.type === "note" ? "Note" : theme.label}
                     </span>
                   </button>
                 );

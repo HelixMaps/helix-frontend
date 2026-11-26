@@ -6,6 +6,7 @@ import {
   CheckSquare,
   Link2,
   Plus,
+  StickyNote,
   ChevronUp,
   Box,
   Grid,
@@ -24,6 +25,9 @@ import { layoutNodesHierarchical } from "@/utils/autoLayout";
 
 export default function SpatialCommandDeck({
   onAddNode,
+  onAddNote,
+  onToggleNoteMode,
+  isDrawingNote = false,
   onShare,
   onExport,
   onOpenTeam,
@@ -67,8 +71,8 @@ export default function SpatialCommandDeck({
       >
         {!isReadOnly ? (
           <>
-            {/* ── 1. Unified Node Spawner ── */}
-            <div className="relative flex items-center pr-2 border-r border-white/[0.06]">
+            {/* ── 1. Unified Node & Note Spawners ── */}
+            <div className="relative flex items-center gap-1 pr-2 border-r border-white/[0.06]">
               <button
                 onClick={() => onAddNode()}
                 className="group flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-transparent hover:bg-white/[0.05] text-zinc-400 hover:text-zinc-100 text-xs font-medium cursor-pointer active:scale-95 transition-all whitespace-nowrap shrink-0"
@@ -76,6 +80,31 @@ export default function SpatialCommandDeck({
               >
                 <Plus size={13} className="text-zinc-300 group-hover:text-white transition-colors" />
                 <span className="hidden sm:inline">Add Node</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (onToggleNoteMode) onToggleNoteMode();
+                  else if (onAddNote) onAddNote();
+                }}
+                className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer active:scale-95 transition-all whitespace-nowrap shrink-0 ${
+                  isDrawingNote
+                    ? "bg-white text-zinc-950 font-semibold shadow-md ring-2 ring-white/50"
+                    : "bg-transparent hover:bg-white/[0.05] text-zinc-400 hover:text-zinc-100"
+                }`}
+                title="Click and drag on canvas to create note region (or press 'N')"
+              >
+                <StickyNote
+                  size={13}
+                  className={
+                    isDrawingNote
+                      ? "text-zinc-950"
+                      : "text-zinc-300 group-hover:text-white transition-colors"
+                  }
+                />
+                <span className="hidden sm:inline">
+                  {isDrawingNote ? "Drawing Note..." : "Add Note"}
+                </span>
               </button>
             </div>
 
